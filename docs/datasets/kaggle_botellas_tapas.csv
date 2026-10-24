@@ -1,0 +1,70 @@
+titulo,url,licencia,tamano_MB,descargas,actualizado,subtitulo,terminos_busqueda
+Drinking Waste Classification,https://www.kaggle.com/datasets/arkadiyhacks/drinking-waste-classification,CC0: Public Domain,1605.6,8903,2020-05-10,"4 classes of waste: Aluminium Cans, Glass bottles, PET bottles, HDPE bottles",bottles
+Plastic Bottles in the wild Image Dataset,https://www.kaggle.com/datasets/siddharthkumarsah/plastic-bottles-image-dataset,Attribution 4.0 International (CC BY 4.0),1638.6,8501,2023-03-04,8000 ANNOTATED images of plastic bottles in the wild,bottle detection;bottles;plastic bottle
+Bottles Synthetic Images,https://www.kaggle.com/datasets/vencerlanz09/bottle-synthetic-images-dataset,CC BY-SA 3.0,1349.0,5899,2022-08-24,A Synthetically Generated Bottle Dataset for Image Recognition,beer bottle;bottle classification;bottles;plastic bottle;water bottle;wine bottle
+Water Bottle Image Classification Dataset,https://www.kaggle.com/datasets/chethuhn/water-bottle-dataset,CC0: Public Domain,67.3,5601,2023-01-06,"""Classifying Water Bottle Images Based on Water Level Using Machine Learning""",bottle classification;bottles;water bottle
+Bottles and Cans Images,https://www.kaggle.com/datasets/moezabid/bottles-and-cans,CC0: Public Domain,156.1,4785,2020-07-14,Classification of plastic bottles and aluminum cans image data.,bottles
+MVTecAD (MVTec Anomaly Detection),https://www.kaggle.com/datasets/thtuan/mvtecad-mvtec-anomaly-detection,Unknown,5269.2,2554,2021-07-23,,bottle detection
+Bottles and Cups Dataset | Household Objects,https://www.kaggle.com/datasets/dataclusterlabs/bottles-and-cups-dataset,Data files © Original Authors,217.4,2148,2022-09-25,Plastic Bottles and cups images for Object Detection,bottle classification;bottle detection;bottles;plastic bottle
+COLA BOTTLE IDENTIFICATION,https://www.kaggle.com/datasets/deadskull7/cola-bottle-identification,GPL 2,587.7,1550,2018-07-05,,bottle label
+Alcohol Bottle Images | Glass Bottles,https://www.kaggle.com/datasets/dataclusterlabs/alcohol-bottle-images-glass-bottles,CC0: Public Domain,302.0,1483,2023-02-22,This dataset is useful for detecting glass bottles especially Alcohol bottles. ,bottle classification;bottle detection;bottles;glass bottle
+Food Packaging Dataset,https://www.kaggle.com/datasets/parjunwoo/fooddatasert,Unknown,38059.3,1287,2024-07-29,,beverage packaging
+Bottles Dataset,https://www.kaggle.com/datasets/zahidbooni/bottles-dataset,"Database: Open Database, Contents: Database Contents",2953.4,1177,2022-11-27,A dataset of small large and non-bottles.,bottle classification;bottles
+Most Common Recyclable and Non-Recyclable Objects,https://www.kaggle.com/datasets/ashwinshrivastav/most-common-recyclable-and-nonrecyclable-objects,Unknown,69.9,1119,2022-06-01,"Images of Plastic Bottles, Cans, Plastic Utensils, and Takeout Containers",bottles
+"Plastic Waste Image Dataset (Bottles, Bags, Cups)",https://www.kaggle.com/datasets/yadavmohit04/plastic-multiclass-dataset,MIT,375.3,813,2025-06-02,A high-quality multiclass image dataset of plastic waste (8000 images) for class,bottles;plastic bottle
+Big Cola Bottles Dataset for YOLO Quality Control,https://www.kaggle.com/datasets/youssefeldemerdashh/big-cola-bottles-dataset-for-yolo-quality-control,Apache 2.0,1908.8,719,2026-05-23,Annotated big cola small bottles for quality control.,bottle cap;bottle cap defect;bottle caps;bottle classification;bottle defect;bottle detection;bottle fill level;bottle label;bottles;cap defect;label defect;liquid level bottle
+HDPE and PET Bottle Plastic Waste,https://www.kaggle.com/datasets/mariaqib/hdpe-and-pet-bottle-plastic-waste,Other (specified in description),261.8,550,2024-02-09,The collection of datasets of HDPE and PET bottle plastic waste,bottle classification;bottle detection;pet bottle;plastic bottle
+Litter Detection - Plastic Bottle and Bag,https://www.kaggle.com/datasets/aaronvincent6411/litter-detection-plastic-bottle-and-bag,GNU Free Documentation License 1.3,82.5,523,2024-04-20,This dataset contain images of plastic bottle and bag.,bottle classification;bottle detection;bottles;plastic bottle
+Marine Debris Images Dataset,https://www.kaggle.com/datasets/zienabesam/marine-debris-images-dataset,MIT,960.7,474,2025-06-30,"Marine Debris for Object detection (plastic, plastic bottles, foam,can)",plastic bottle
+Glass and Plastic Bottles,https://www.kaggle.com/datasets/antonpivnenko/glass-and-plastic-bottles,CC0: Public Domain,318.5,422,2025-05-29,Train Your Models on Realistic Data: Mixed Quality and Multi-Device Bottle Image,bottle classification;bottles;glass bottle;plastic bottle
+Juice Box Straw Defects Dataset,https://www.kaggle.com/datasets/jhamilgutierrez/juice-box-straw-defects,CC BY-NC-SA 4.0,7358.5,394,2026-01-23,A balanced and controlled dataset of juice box packaging with straw defects.,beverage packaging;packaging defect
+Calidad de vinho verde portugués,https://www.kaggle.com/datasets/carlmcbrideellis/calidad-de-vinho-verde-portugus,Attribution 4.0 International (CC BY 4.0),0.1,373,2023-05-09,La calidad de 6497 botellas de vino (blanco y rojo),botellas
+Bottle,https://www.kaggle.com/datasets/samuelayman/bottle,Apache 2.0,151.7,346,2025-04-13,Yolo annotated Bottle dataset,bottle detection;bottles;water bottle
+Wine packaging,https://www.kaggle.com/datasets/diegocaballeror/wine-packaging,Attribution 4.0 International (CC BY 4.0),593.3,301,2024-10-02,Dataset of wine packaging focus in detection of issues,bottle cap;bottle cap defect;bottle caps;bottle defect;bottle detection;bottle inspection;cap defect;packaging defect;wine bottle
+Color Cap,https://www.kaggle.com/datasets/artemsmetanin/color-cap,Apache 2.0,908.3,258,2024-07-03,Colored plastic bottle caps on the conveyor belt,bottle cap;bottle cap color;bottle caps;bottle detection;plastic bottle
+Plastic Bottle and Not Bottle Dataset for Training,https://www.kaggle.com/datasets/munira1020/plastic-bottle-and-not-bottle-dataset-for-training,Unknown,2629.8,242,2023-09-06,Image of plastic bottles and not bottles,bottle detection;bottles;plastic bottle
+Industrial Inspection System,https://www.kaggle.com/datasets/dhiaalhemdani/industrial-inspection-system,MIT,223.1,241,2026-10-03,Advanced AI-Driven Quality Control System for Transparent Plastic Bottles,bottle cap;bottle cap defect;bottle classification;bottle defect;bottle fill level;bottle inspection;bottle label;cap defect;closure inspection;label defect;liquid level bottle;packaging defect;pet bottle;plastic bottle
+Bottle Dataset,https://www.kaggle.com/datasets/muhamadusriyusron/bottle-dataset,Other (specified in description),234.0,224,2024-12-20,Pictures of bottles for classification with three types of bottles.,bottle classification;glass bottle;plastic bottle
+Liquid Level Detection Dataset (YOLOv11),https://www.kaggle.com/datasets/goktani/liquid-level-detection-dataset-yolov11,Attribution 4.0 International (CC BY 4.0),7.1,203,2026-01-19,Annotated images for container fill level estimation (YOLOv11 Format),bottle detection;bottle fill level;bottles;glass bottle;liquid level bottle;pet bottle
+Water Bottle Defect-Level Detection Dataset,https://www.kaggle.com/datasets/jihadakbr/water-bottle-defect-level-detection-dataset,MIT,334.5,185,2026-02-10,,bottle defect;bottle detection;water bottle
+Bolts and Washers,https://www.kaggle.com/datasets/ahmedmohamedab/bolts-and-washers,MIT,60.3,184,2026-01-25,"This dataset contains 250 images of bolts, bottles, and washers annotated",bottle detection;bottle inspection;bottles;glass bottle;plastic bottle
+Top Shelf,https://www.kaggle.com/datasets/jenlooper/bottles,CC0: Public Domain,220.7,170,2020-02-28,Images of distinctive liquor bottles to categorize types of minibar drinks,bottles
+Plastic Bottle,https://www.kaggle.com/datasets/munira1020/plastic-bottle,Unknown,70.4,167,2023-08-13,,plastic bottle
+Plastic Bottle Images (70k+) for ML Training,https://www.kaggle.com/datasets/md8habibullah/plastic-bottle-images-70k-for-ml-training,CC BY-NC-SA 4.0,8634.9,149,2025-07-04,A large-scale image dataset of plastic bottles for classification and detection,plastic bottle
+SmartWarehouseYOLO,https://www.kaggle.com/datasets/fidsusj/smartwarehouseyolo,Data files © Original Authors,1324.0,146,2020-05-03,Water bottle images to train the YOLO Object Detector,water bottle
+BOTTLE CAP DATASET,https://www.kaggle.com/datasets/magapuabhijit/bottle-cap-dataset,Unknown,14967.0,145,2021-05-26,,bottle cap
+Bottle Datasets,https://www.kaggle.com/datasets/zahidbooni/bottle,Unknown,3147.3,145,2021-09-13,"Collection of large small, and non-bottles ",bottle classification
+Dataset for Bottle Label Detection,https://www.kaggle.com/datasets/yashvisave/dataset-for-bottle-label-detection,Apache 2.0,15.4,132,2025-04-22,YOLOv8-Compatible Dataset for Bottle Label Detection: Identifying Bottles With a,bottle classification;bottle detection;bottle label;plastic bottle
+Bottle defects,https://www.kaggle.com/datasets/mendemukesh/bottle-defects,Unknown,134.3,120,2024-02-25,,bottle defect
+Bottle Detection Dataset,https://www.kaggle.com/datasets/diptosen/bottle-detection-dataset,Attribution 4.0 International (CC BY 4.0),566.3,118,2025-11-13,Bottle images for object detection: closeup and occlusion scenarios from wastes,bottle classification;bottle detection
+"Bottles, Caps and Bottlenecks",https://www.kaggle.com/datasets/aimerlover/bottles-caps-and-bottlenecks,Unknown,697.2,114,2021-10-19,,bottle cap;bottle caps
+bottles,https://www.kaggle.com/datasets/localbrain/bottles,Unknown,15.6,100,2021-04-14,,bottles
+pet-bottles,https://www.kaggle.com/datasets/jonasfok/petbottles,Unknown,356.8,99,2021-08-22,,pet bottle
+Industrial Production - Beverage Bottling Line,https://www.kaggle.com/datasets/gabrielaugustodavid/industrial-production-beverage-bottling-line,CC BY-NC-SA 4.0,0.1,97,2026-01-04,Industrial Production Time-Series Dataset from a Beverage Bottling Line,bottling line
+bottle cap classification,https://www.kaggle.com/datasets/tahuuanh/bottle-cap-classification,Unknown,1437.8,90,2023-04-08,,bottle cap;bottle classification
+glass-bottle-images,https://www.kaggle.com/datasets/andromedahal20/glass-bottle-images,Unknown,210.5,88,2023-09-15,,glass bottle
+Plastic Bottle Detection Dataset - Algeria,https://www.kaggle.com/datasets/hichemrahmani/plastic-bottle-detection-dataset-algeria,CC BY-SA 4.0,7.1,81,2025-06-16,Plastic bottle dataset for object detection in real-world environments,bottle detection;plastic bottle
+bottle-cap,https://www.kaggle.com/datasets/uzairahmad1434/bottle-cap,Apache 2.0,17.4,73,2026-09-04,,bottle cap
+A dataset of label printing defects,https://www.kaggle.com/datasets/amor000/a-dataset-of-label-printing-defects,Apache 2.0,32.7,68,2025-11-22,,label defect
+soda bottle,https://www.kaggle.com/datasets/sebastianlinjiang/soda-bottle,Unknown,587.7,67,2022-02-06,,bottle label
+bottle-image-caption-data,https://www.kaggle.com/datasets/hemi57/bottle-image-caption-data,Other (specified in description),44.8,66,2024-01-18,,beer bottle;bottle cap;crown cap;glass bottle;pet bottle
+SmartWarehouseSSD,https://www.kaggle.com/datasets/fidsusj/smartwarehousessd,Data files © Original Authors,1550.4,57,2020-05-03,Water bottle images to train the Single Shot MultiBox Detector,water bottle
+Plastic bottles and Polythene  images from Kampala,https://www.kaggle.com/datasets/nyombiabdulkarim/plastic-bottles-and-polythene-images-from-kampala,"Database: Open Database, Contents: Database Contents",2961.8,46,2025-08-29,,plastic bottle
+Plastic Bottles Datasets (70k+),https://www.kaggle.com/datasets/md8habibullah/plastic-bottles-datasets-70k,CC BY-NC-SA 4.0,9076.3,37,2025-07-05,,plastic bottle
+"Residuos de botellas, papel y platano",https://www.kaggle.com/datasets/hubertvalderrama/residuos-de-botellas-papel-y-platano,Other (specified in description),1444.1,35,2024-08-03,"Residuos de botellas, papel y platano",botellas
+UDA-BD Dataset with DOTA format,https://www.kaggle.com/datasets/namirinz/udabd-dataset-with-dota-format,CC0: Public Domain,4630.3,32,2022-05-10,Bottle Detection in the Wild Using Low-Altitude Unmanned Aerial Vehicles,bottle detection
+plastic-bottles-image-dataset,https://www.kaggle.com/datasets/guanjingye/plastic-bottles-image-dataset,Unknown,2145.4,28,2025-03-20,,plastic bottle
+ScanLab,https://www.kaggle.com/datasets/maruf99alam/drinking-bottle-detector,CC0: Public Domain,27.9,24,2025-07-19,A Bottle Label Detector to find the origin of the company,bottle label
+Pet_Bottle_Dataset,https://www.kaggle.com/datasets/chetandabbe/pet-bottle-dataset,Unknown,119.8,19,2024-09-27,,pet bottle
+plastic-bottles-on-beachs,https://www.kaggle.com/datasets/anupkumar08/plastic-bottles-on-beachs,Unknown,0.1,14,2023-06-18,,plastic bottle
+Capstone Bottle Dataset,https://www.kaggle.com/datasets/erenpeker/capstone-bottle-dataset,Unknown,1.9,11,2023-06-01,,bottle cap;bottle caps
+Alcohol Bottle Detection. (Devansh Srivastava),https://www.kaggle.com/datasets/devansh158/alcohol-bottle-detection-devansh-srivastava,Unknown,312.7,10,2025-11-29,,bottle detection
+Bottles in water,https://www.kaggle.com/datasets/abdallahisham98/bottles-in-water,Unknown,1281.7,9,2024-07-25,,water bottle
+water-bottle,https://www.kaggle.com/datasets/quachnam/water-bottle,Unknown,406.0,8,2025-03-15,,water bottle
+GLASS_MVTEC,https://www.kaggle.com/datasets/hubarera/glass-mvtec,MIT,6114.9,7,2025-05-22,,glass bottle
+water-bottle-dataset,https://www.kaggle.com/datasets/kanakbodkhe/water-bottle-dataset,MIT,15.2,7,2025-12-02,,water bottle
+3_botellas_y_relojes,https://www.kaggle.com/datasets/diegomercadoc/3-botellas-y-relojes,MIT,178.6,7,2025-03-22,,botellas
+Water bottle,https://www.kaggle.com/datasets/billyballinn/water-bottle,Apache 2.0,0.1,6,2026-06-25,,water bottle
+Bottle Detection Latest,https://www.kaggle.com/datasets/kyawhtetlinn/bottle-detection-latest,Apache 2.0,399.0,5,2026-08-15,,bottle detection
+water bottle,https://www.kaggle.com/datasets/surrybie/water-bottle,Apache 2.0,0.0,3,2026-07-31,,water bottle
+Matenet,https://www.kaggle.com/datasets/sezepardus/matenet,Unknown,50403.5,1,2026-04-21,Synthetically created images of 13 different bottle types,bottle label
