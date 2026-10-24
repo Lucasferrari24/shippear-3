@@ -1,385 +1,81 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
-import { Overlay } from "@/components/Overlay";
-import {
-  DEFAULT_BANDS,
-  DEFECT_LABELS,
-  judge,
-  type InspectionResult,
-  type LevelBand,
-} from "@/lib/inspection";
+import { useEffect, useState } from "react";
+import { Trash2 } from "lucide-react";
+import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer";
+import { Detail, DetailEmpty } from "@/components/inspect/detail";
+import { LoteGrid } from "@/components/inspect/lote-grid";
+import { LoteSummary } from "@/components/inspect/summary";
+import { Upload } from "@/components/inspect/upload";
+import { useStore } from "@/lib/store";
 
-type Item = {
-  key: string;
-  name: string;
-  src: string;
-  width: number;
-  height: number;
-  status: "pending" | "running" | "done" | "error";
-  result?: InspectionResult;
-  error?: string;
-};
-
-type Bands = typeof DEFAULT_BANDS;
-
-const MAX_EDGE = 1280;
-const CONCURRENCY = 3;
-
-/** Reescala a MAX_EDGE para que las coordenadas de la IA coincidan con el canvas. */
-async function loadImage(file: File): Promise<Pick<Item, "src" | "width" | "height">> {
-  const url = URL.createObjectURL(file);
-  const img = await new Promise<HTMLImageElement>((res, rej) => {
-    const i = new Image();
-    i.onload = () => res(i);
-    i.onerror = rej;
-    i.src = url;
-  });
-  const k = Math.min(1, MAX_EDGE / Math.max(img.naturalWidth, img.naturalHeight));
-  const width = Math.round(img.naturalWidth * k);
-  const height = Math.round(img.naturalHeight * k);
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-  canvas.getContext("2d")!.drawImage(img, 0, 0, width, height);
-  URL.revokeObjectURL(url);
-  return { src: canvas.toDataURL("image/jpeg", 0.9), width, height };
-}
-
-function bandFor(bands: Bands, r: InspectionResult): LevelBand {
-  return bands[r.reading.bottle_model === "stevia" ? "stevia" : "clasico"];
-}
-
-export default function Home() {
-  const [items, setItems] = useState<Item[]>([]);
-  const [bands, setBands] = useState<Bands>(DEFAULT_BANDS);
-  const [selected, setSelected] = useState<string | null>(null);
-  const [dragging, setDragging] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  const patch = (key: string, p: Partial<Item>) =>
-    setItems((xs) => xs.map((x) => (x.key === key ? { ...x, ...p } : x)));
-
-  const inspect = useCallback(async (item: Item) => {
-    patch(item.key, { status: "running" });
-    try {
-      const res = await fetch("/api/inspect", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ image: item.src, width: item.width, height: item.height }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
-      patch(item.key, { status: "done", result: data });
-    } catch (e) {
-      patch(item.key, { status: "error", error: e instanceof Error ? e.message : String(e) });
-    }
+function useIsDesktop() {
+  const [desktop, setDesktop] = useState(true);
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const on = () => setDesktop(mq.matches);
+    on();
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
   }, []);
+  return desktop;
+}
 
-  const addFiles = useCallback(
-    async (files: FileList | File[]) => {
-      const list = Array.from(files).filter((f) => f.type.startsWith("image/"));
-      const loaded: Item[] = [];
-      for (const f of list) {
-        loaded.push({ key: crypto.randomUUID(), name: f.name, status: "pending", ...(await loadImage(f)) });
-      }
-      setItems((xs) => [...loaded, ...xs]);
-      if (loaded[0]) setSelected(loaded[0].key);
-      const queue = [...loaded];
-      await Promise.all(
-        Array.from({ length: CONCURRENCY }, async () => {
-          for (let it = queue.shift(); it; it = queue.shift()) await inspect(it);
-        }),
-      );
-    },
-    [inspect],
-  );
+export default function InspectPage() {
+  const { selected, select, items, clear } = useStore();
+  const desktop = useIsDesktop();
+  const [drawer, setDrawer] = useState(false);
 
-  // El veredicto se recalcula en el cliente: recalibrar la banda no vuelve a llamar a la IA.
-  const judged = useMemo(
-    () =>
-      items.map((it) => ({
-        ...it,
-        verdict: it.result ? judge(it.result.reading, bandFor(bands, it.result)) : undefined,
-      })),
-    [items, bands],
-  );
-
-  const done = judged.filter((j) => j.verdict);
-  const nok = done.filter((j) => j.verdict!.status === "NOK");
-  const defectCounts = nok
-    .flatMap((j) => j.verdict!.defects)
-    .reduce<Record<string, number>>((acc, d) => ({ ...acc, [d]: (acc[d] ?? 0) + 1 }), {});
-
-  const current = judged.find((j) => j.key === selected) ?? judged[0];
-
-  const calibrate = () => {
-    if (!current?.result || current.verdict?.levelFraction == null) return;
-    const model = current.result.reading.bottle_model === "stevia" ? "stevia" : "clasico";
-    const f = current.verdict.levelFraction;
-    setBands((b) => ({ ...b, [model]: { min: +(f - 0.04).toFixed(3), max: +(f + 0.04).toFixed(3) } }));
-  };
-
-  const exportCsv = () => {
-    const rows = [
-      ["archivo", "modelo", "veredicto", "defectos", "estado_tapa", "nivel_pct", "confianza", "evidencia"],
-      ...done.map((j) => [
-        j.name,
-        j.result!.reading.bottle_model,
-        j.verdict!.status,
-        j.verdict!.defects.join("|"),
-        j.result!.reading.cap_state,
-        j.verdict!.levelFraction != null ? (j.verdict!.levelFraction * 100).toFixed(1) : "",
-        j.result!.reading.confidence.toFixed(2),
-        j.result!.reading.evidence,
-      ]),
-    ];
-    const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
-    a.download = "centinela-qc.csv";
-    a.click();
+  const open = (key: string) => {
+    select(key);
+    if (!desktop) setDrawer(true);
   };
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-6">
-      <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Centinela QC</h1>
-          <p className="text-sm text-slate-400">
-            Control de calidad por visión para la línea de envasado de Virginia · tapa y nivel de llenado, foto por foto.
-          </p>
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-1">
+        <div className="flex items-end justify-between gap-3">
+          <h1 className="text-balance text-3xl font-semibold tracking-tight text-foreground md:text-4xl">Inspeccionar lote</h1>
+          {items.length > 0 && (
+            <button
+              type="button"
+              onClick={clear}
+              className="flex h-9 items-center gap-1.5 rounded-full px-3 text-sm text-muted-foreground hover:bg-elevated hover:text-foreground"
+            >
+              <Trash2 className="size-4" aria-hidden />
+              Vaciar
+            </button>
+          )}
         </div>
-        <div className="flex gap-2 text-sm">
-          <Stat label="Inspeccionadas" value={done.length} />
-          <Stat label="OK" value={done.length - nok.length} tone="ok" />
-          <Stat label="NOK" value={nok.length} tone="nok" />
-        </div>
-      </header>
-
-      <div
-        onDragOver={(e) => {
-          e.preventDefault();
-          setDragging(true);
-        }}
-        onDragLeave={() => setDragging(false)}
-        onDrop={(e) => {
-          e.preventDefault();
-          setDragging(false);
-          addFiles(e.dataTransfer.files);
-        }}
-        onClick={() => inputRef.current?.click()}
-        className={`mb-6 cursor-pointer rounded-xl border-2 border-dashed p-6 text-center transition ${
-          dragging ? "border-sky-400 bg-sky-400/10" : "border-slate-700 hover:border-slate-500"
-        }`}
-      >
-        <p className="font-medium">Arrastrá fotos de botellas o tocá para elegir / sacar una foto</p>
-        <p className="text-xs text-slate-500">Clásico (tapa roja) y Stevia (tapa verde) · varias a la vez</p>
-        <input
-          ref={inputRef}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          multiple
-          hidden
-          onChange={(e) => e.target.files && addFiles(e.target.files)}
-        />
+        <p className="text-pretty text-sm leading-relaxed text-muted-foreground">
+          Virginia Clásico y Stevia · tapa y nivel por foto, con veredicto calculado sobre la banda vigente.
+        </p>
       </div>
 
-      {judged.length === 0 ? (
-        <HowItWorks />
-      ) : (
-        <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
-          <section>
-            {current && (
-              <div className="rounded-xl border border-slate-800 p-3">
-                {current.result && current.verdict ? (
-                  <Overlay src={current.src} result={current.result} verdict={current.verdict} />
-                ) : (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={current.src} alt={current.name} className="w-full rounded-lg opacity-60" />
-                )}
-              </div>
-            )}
-            <div className="mt-4 grid grid-cols-4 gap-2 sm:grid-cols-6 md:grid-cols-8">
-              {judged.map((j) => (
-                <button
-                  key={j.key}
-                  onClick={() => setSelected(j.key)}
-                  className={`relative overflow-hidden rounded-md border-2 ${
-                    j.key === current?.key ? "border-sky-400" : "border-transparent"
-                  }`}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={j.src} alt={j.name} className="aspect-[3/4] w-full object-cover" />
-                  <span
-                    className={`absolute inset-x-0 bottom-0 text-[10px] font-bold ${
-                      j.verdict?.status === "OK"
-                        ? "bg-green-600"
-                        : j.verdict?.status === "NOK"
-                          ? "bg-red-600"
-                          : j.status === "error"
-                            ? "bg-slate-600"
-                            : "bg-slate-800 animate-pulse"
-                    }`}
-                  >
-                    {j.verdict?.status ?? (j.status === "error" ? "ERROR" : "…")}
-                  </span>
-                </button>
-              ))}
+      <Upload />
+
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px] xl:grid-cols-[minmax(0,1fr)_460px]">
+        <div className="flex min-w-0 flex-col gap-4">
+          <LoteSummary />
+          <LoteGrid onOpen={open} />
+        </div>
+        <aside className="hidden lg:block">
+          <div className="sticky top-20 max-h-[calc(100dvh-6rem)] overflow-y-auto pb-4 [scrollbar-width:thin]">
+            {selected ? <Detail key={selected.key} item={selected} /> : <DetailEmpty />}
+          </div>
+        </aside>
+      </div>
+
+      {!desktop && (
+        <Drawer open={drawer && !!selected} onOpenChange={setDrawer}>
+          <DrawerContent className="max-h-[94dvh] rounded-t-[28px] border-border bg-background">
+            <DrawerTitle className="sr-only">{selected?.name ?? "Detalle"}</DrawerTitle>
+            <div className="overflow-y-auto px-4 pb-8 pt-2">
+              {selected && <Detail key={selected.key} item={selected} />}
             </div>
-          </section>
-
-          <aside className="space-y-4">
-            {current && <Detail item={current} onCalibrate={calibrate} onRetry={() => inspect(current)} />}
-
-            <div className="rounded-xl border border-slate-800 p-4">
-              <h3 className="mb-3 text-sm font-semibold">Banda de llenado (desde el tope del envase)</h3>
-              {(Object.keys(bands) as (keyof Bands)[]).map((m) => (
-                <div key={m} className="mb-3 text-sm">
-                  <div className="mb-1 capitalize text-slate-400">{m}</div>
-                  <div className="flex gap-3">
-                    {(["min", "max"] as const).map((k) => (
-                      <label key={k} className="flex items-center gap-2">
-                        <span className="w-8 text-xs uppercase text-slate-500">{k}</span>
-                        <input
-                          type="number"
-                          step={0.01}
-                          min={0}
-                          max={1}
-                          value={bands[m][k]}
-                          onChange={(e) =>
-                            setBands((b) => ({ ...b, [m]: { ...b[m], [k]: Number(e.target.value) } }))
-                          }
-                          className="w-20 rounded bg-slate-900 px-2 py-1"
-                        />
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              ))}
-              <p className="text-xs text-slate-500">
-                Los veredictos se recalculan al instante. Usá «Calibrar» sobre una botella OK para fijar la banda ±4%.
-              </p>
-            </div>
-
-            {nok.length > 0 && (
-              <div className="rounded-xl border border-slate-800 p-4 text-sm">
-                <h3 className="mb-2 font-semibold">Defectos del lote</h3>
-                {Object.entries(defectCounts).map(([d, n]) => (
-                  <div key={d} className="flex justify-between">
-                    <span>{DEFECT_LABELS[d as keyof typeof DEFECT_LABELS]}</span>
-                    <span className="font-mono">{n}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {done.length > 0 && (
-              <button onClick={exportCsv} className="w-full rounded-lg bg-slate-800 py-2 text-sm hover:bg-slate-700">
-                Exportar reporte CSV
-              </button>
-            )}
-          </aside>
-        </div>
+          </DrawerContent>
+        </Drawer>
       )}
-    </main>
-  );
-}
-
-function Stat({ label, value, tone }: { label: string; value: number; tone?: "ok" | "nok" }) {
-  const color = tone === "ok" ? "text-green-400" : tone === "nok" ? "text-red-400" : "text-slate-200";
-  return (
-    <div className="rounded-lg border border-slate-800 px-3 py-1.5 text-center">
-      <div className={`font-mono text-lg ${color}`}>{value}</div>
-      <div className="text-[10px] uppercase tracking-wide text-slate-500">{label}</div>
-    </div>
-  );
-}
-
-function Detail({
-  item,
-  onCalibrate,
-  onRetry,
-}: {
-  item: Item & { verdict?: ReturnType<typeof judge> };
-  onCalibrate: () => void;
-  onRetry: () => void;
-}) {
-  const { result, verdict } = item;
-  if (item.status === "error")
-    return (
-      <div className="rounded-xl border border-red-900 p-4 text-sm">
-        <p className="mb-2 text-red-400">{item.error}</p>
-        <button onClick={onRetry} className="rounded bg-slate-800 px-3 py-1">
-          Reintentar
-        </button>
-      </div>
-    );
-  if (!result || !verdict)
-    return <div className="rounded-xl border border-slate-800 p-4 text-sm text-slate-400">Inspeccionando…</div>;
-
-  const r = result.reading;
-  return (
-    <div className="rounded-xl border border-slate-800 p-4 text-sm">
-      <div
-        className={`mb-3 rounded-lg py-3 text-center text-3xl font-bold ${
-          verdict.status === "OK" ? "bg-green-600/20 text-green-400" : "bg-red-600/20 text-red-400"
-        }`}
-      >
-        {verdict.status}
-      </div>
-      {verdict.defects.length > 0 && (
-        <ul className="mb-3 list-inside list-disc text-red-300">
-          {verdict.defects.map((d) => (
-            <li key={d}>{DEFECT_LABELS[d]}</li>
-          ))}
-        </ul>
-      )}
-      <dl className="grid grid-cols-2 gap-y-1 text-slate-300">
-        <dt className="text-slate-500">Modelo</dt>
-        <dd className="capitalize">{r.bottle_model}</dd>
-        <dt className="text-slate-500">Tapa</dt>
-        <dd>{r.cap_state.replace("_", " ")}</dd>
-        <dt className="text-slate-500">Nivel</dt>
-        <dd>
-          {verdict.levelFraction != null ? `${(verdict.levelFraction * 100).toFixed(1)}%` : "—"}{" "}
-          <span className="text-slate-500">
-            (banda {(verdict.band.min * 100).toFixed(0)}–{(verdict.band.max * 100).toFixed(0)}%)
-          </span>
-        </dd>
-        <dt className="text-slate-500">Confianza</dt>
-        <dd>{(r.confidence * 100).toFixed(0)}%</dd>
-        <dt className="text-slate-500">Latencia</dt>
-        <dd>{(result.latencyMs / 1000).toFixed(1)} s</dd>
-      </dl>
-      <p className="mt-3 border-t border-slate-800 pt-3 italic text-slate-400">“{r.evidence}”</p>
-      <button
-        onClick={onCalibrate}
-        disabled={verdict.levelFraction == null}
-        className="mt-3 w-full rounded-lg bg-sky-700 py-2 hover:bg-sky-600 disabled:opacity-40"
-      >
-        Calibrar banda con esta foto (es OK)
-      </button>
-    </div>
-  );
-}
-
-function HowItWorks() {
-  const steps = [
-    ["1 · Foto", "Subí o sacá la foto de una botella al final de la línea."],
-    ["2 · La IA mide", "Un modelo de visión ubica envase, pico, tapa y menisco, y clasifica el estado de la tapa."],
-    ["3 · Reglas", "Un motor determinístico compara el nivel contra la banda mín/máx calibrada para cada modelo."],
-    ["4 · Veredicto", "OK / NOK, defecto y cotas superpuestas sobre la imagen; lote exportable a CSV."],
-  ];
-  return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      {steps.map(([t, d]) => (
-        <div key={t} className="rounded-xl border border-slate-800 p-4">
-          <div className="mb-1 font-semibold">{t}</div>
-          <p className="text-sm text-slate-400">{d}</p>
-        </div>
-      ))}
     </div>
   );
 }
