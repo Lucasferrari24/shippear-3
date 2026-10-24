@@ -1,6 +1,6 @@
 """Configuración, rutas y reglas compartidas por los scripts del pipeline.
 
-Las reglas de veredicto replican `judge()` de src/lib/inspection.ts: si se cambia una, hay que cambiar la otra.
+Las reglas de veredicto replican `judge()` de backend/src/lib/judge.ts: si se cambia una, hay que cambiar la otra.
 """
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ IMG_EXT = {".jpg", ".jpeg", ".png", ".webp"}
 BOTTLE_MODELS = ("clasico", "stevia")
 SOURCES = ("real", "generated", "feedback", "real_test")
 
-# Clase de la carpeta → estado de tapa esperado (como CapState en inspection.ts).
+# Clase de la carpeta → estado de tapa esperado (como CapState en types.ts).
 FOLDER_CAP_STATE = {
     "ok": "ok",
     "mal_colocada": "mal_colocada",
@@ -36,7 +36,7 @@ CAP_STATE_CLASS = {
 }
 CLASS_CAP_STATE = {v: k for k, v in CAP_STATE_CLASS.items()}
 
-# Clase de la carpeta → defectos esperados (como DefectCode en inspection.ts).
+# Clase de la carpeta → defectos esperados (como DefectCode en types.ts).
 FOLDER_DEFECTS = {
     "ok": set(),
     "mal_colocada": {"TAPA_MAL_COLOCADA"},
@@ -47,7 +47,7 @@ FOLDER_DEFECTS = {
 }
 FOLDER_CLASSES = list(FOLDER_DEFECTS)
 
-# Clase de la carpeta → categoría esperada (como BottleCategory en src/lib/bottle.ts).
+# Clase de la carpeta → categoría esperada (como BottleCategory en backend/src/lib/types.ts).
 FOLDER_CATEGORY = {
     "ok": "OK",
     "mal_colocada": "ERROR_TAPA",
@@ -60,10 +60,10 @@ CATEGORIES = ["OK", "ERROR_TAPA", "ERROR_NIVEL", "ERROR_COMBINADO", "INDETERMINA
 
 
 def load_config(path: str | Path | None = None) -> dict:
-    """Lee ml/config.yaml, o el archivo de la variable CENTINELA_CONFIG (lo usa smoke_test.py)."""
+    """Lee ml/config.yaml, o el archivo de la variable CENTINELA_CONFIG."""
     path = Path(path or os.environ.get("CENTINELA_CONFIG") or ML_DIR / "config.yaml")
     cfg = yaml.safe_load(open(path, encoding="utf-8"))
-    for key in ("data_dir", "work_dir", "export_dir"):
+    for key in ("data_dir", "work_dir"):
         cfg[key] = (path.parent / cfg[key]).resolve()
     return cfg
 
@@ -114,7 +114,7 @@ def load_reading(cfg: dict, s: Sample) -> dict | None:
 
 
 def judge(reading: dict, band: dict) -> dict:
-    """Mismo motor de reglas que judge() en src/lib/inspection.ts."""
+    """Mismo motor de reglas que judge() en backend/src/lib/judge.ts."""
     defects = []
     b = reading.get("bottle_box")
     h = (b["y1"] - b["y0"]) if b else 0
@@ -143,7 +143,7 @@ def judge(reading: dict, band: dict) -> dict:
 
 
 def bottle_state(cap: str, level: str, detected: bool = True) -> dict:
-    """Misma lógica que la clase Bottle (src/lib/bottle.ts): tapa OR nivel → error; tapa AND nivel → combinado."""
+    """Misma lógica que judge() (backend/src/lib/judge.ts): tapa OR nivel → error; tapa AND nivel → combinado."""
     cap_error = cap != "ok"
     level_error = level in ("bajo", "alto")
     if not detected:
@@ -188,9 +188,3 @@ def calibrate_bands(cfg: dict, samples: list[Sample]) -> dict:
             bands[model] = {**cfg["band"]["default"], "n": 0}
     return bands
 
-
-def load_bands(cfg: dict) -> dict:
-    p = cfg["work_dir"] / "bands.json"
-    if p.exists():
-        return json.loads(p.read_text(encoding="utf-8"))
-    return {m: dict(cfg["band"]["default"]) for m in BOTTLE_MODELS}

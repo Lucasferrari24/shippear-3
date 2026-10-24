@@ -74,6 +74,10 @@ def main() -> None:
     if counts["test"]:
         data_yaml["test"] = "images/test"
     (out / "dataset.yaml").write_text(yaml.safe_dump(data_yaml, allow_unicode=True, sort_keys=False), encoding="utf-8")
+    # La banda calibrada viaja dentro del zip: Colab la escribe en centinela.json al exportar el modelo.
+    bands = cfg["work_dir"] / "bands.json"
+    if bands.exists():
+        shutil.copyfile(bands, out / "bands.json")
 
     for split in ("train", "val", "test"):
         total = sum(counts[split].values())

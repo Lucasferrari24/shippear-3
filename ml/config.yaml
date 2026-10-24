@@ -1,9 +1,8 @@
-# Configuración del pipeline de entrenamiento de Centinela QC.
+# Configuración de la preparación del dataset de Centinela QC (el entrenamiento corre en Colab: colab_train.ipynb).
 # Las rutas relativas se resuelven desde la carpeta ml/.
 
 data_dir: ../data          # real/, real_test/ y generated/ (ver data/README.md)
-work_dir: work             # etiquetas, dataset armado, corridas y reportes (no se versiona)
-export_dir: ../public/models
+work_dir: work             # etiquetas, lecturas del maestro y dataset armado (no se versiona)
 
 # Clases del detector. El orden define el id de clase en YOLO y en el ONNX exportado.
 classes:
@@ -14,9 +13,9 @@ classes:
   - pico_sin_tapa
   - menisco
 
-# Etiquetado automático con el modelo maestro (la ruta /api/inspect de la app).
+# Etiquetado automático con el modelo maestro (la ruta /api/inspect del backend, local o en Render).
 autolabel:
-  inspect_url: http://localhost:3000/api/inspect
+  inspect_url: http://localhost:8000/api/inspect
   max_side: 1600           # se achica la imagen antes de mandarla a la API
   workers: 4
   menisco_half_height: 0.012   # media altura de la caja del menisco, como fracción del alto de la botella
@@ -32,26 +31,6 @@ band:
   default: { min: 0.22, max: 0.34 }
   margin: 0.04             # igual que la calibración de la app: mediana de las "ok" ± margen
 
-train:
-  model: yolo26n.pt        # nano, NMS-free; alternativa: yolo11n.pt
-  # Medido en la Ryzen 5 7530U: ~0,5 s por imagen y época a 640 px. Con ~80 fotos de train, 60 épocas ≈ 35-45 min.
-  epochs: 60
-  patience: 20
-  imgsz: 640
-  batch: 8
-  workers: 2
-  device: cpu
-  # Aumentaciones pensadas para una botella de frente: sin flip vertical, giro leve.
-  fliplr: 0.5
-  flipud: 0.0
-  degrees: 5.0
-  translate: 0.08
-  scale: 0.3
-  hsv_h: 0.01             # bajo para no confundir la tapa roja (Clásico) con la verde (Stevia)
-  hsv_s: 0.5
-  hsv_v: 0.4
-  mosaic: 0.5
-  close_mosaic: 15
-
+# Umbral de confianza que Colab escribe en centinela.json (lo usa el backend al predecir).
 predict:
   conf: 0.25
