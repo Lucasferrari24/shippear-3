@@ -67,6 +67,7 @@ export type Comparison = {
   verdictMatch: boolean | null;
   capStateMatch: boolean | null;
   defectsMatch: boolean | null;
+  categoryMatch: boolean | null;
   bottleIou: number | null;
   capIou: number | null;
   levelDelta: number | null;
@@ -97,21 +98,26 @@ function realDefects(v: Verdict): DefectCode[] {
 
 export function compare(local: { reading: VisionReading; verdict: Verdict } | null, teacher: { reading: VisionReading; verdict: Verdict }): Comparison {
   if (!local) {
-    return { outcome: "teacher_only", verdictMatch: null, capStateMatch: null, defectsMatch: null, bottleIou: null, capIou: null, levelDelta: null };
+    return {
+      outcome: "teacher_only", verdictMatch: null, capStateMatch: null, defectsMatch: null, categoryMatch: null,
+      bottleIou: null, capIou: null, levelDelta: null,
+    };
   }
   const verdictMatch = local.verdict.status === teacher.verdict.status;
   const capStateMatch = local.reading.cap_state === teacher.reading.cap_state;
   const a = new Set(realDefects(local.verdict));
   const b = new Set(realDefects(teacher.verdict));
   const defectsMatch = a.size === b.size && [...a].every((d) => b.has(d));
+  const categoryMatch = local.verdict.bottle.code === teacher.verdict.bottle.code;
   const capBox = (r: VisionReading) => (r.cap_state === "ausente" ? r.spout_box : r.cap_box);
   const lf = local.verdict.levelFraction;
   const tf = teacher.verdict.levelFraction;
   return {
-    outcome: verdictMatch && capStateMatch && defectsMatch ? "agree" : "disagree",
+    outcome: verdictMatch && capStateMatch && defectsMatch && categoryMatch ? "agree" : "disagree",
     verdictMatch,
     capStateMatch,
     defectsMatch,
+    categoryMatch,
     bottleIou: iou(local.reading.bottle_box, teacher.reading.bottle_box),
     capIou: iou(capBox(local.reading), capBox(teacher.reading)),
     levelDelta: lf != null && tf != null ? lf - tf : null,
@@ -230,14 +236,19 @@ export function recordFeedback(input: FeedbackInput, teacher: TeacherResult): Fe
     const modelVersionId = input.local ? upsertModelVersion(c, input.local.modelVersion) : null;
     const now = new Date().toISOString();
     const recipe = primary.reading.bottle_model === "desconocido" ? null : `recipe-${primary.reading.bottle_model}`;
+    const state = primary.verdict.bottle;
+    // INDETERMINADO no pasa como OK ni se cuenta como defecto: queda en REVIEW.
+    const dbVerdict = state.category === "INDETERMINADO" ? "REVIEW" : primary.verdict.status;
     c.prepare(
       `INSERT INTO inspections (id, captured_at, processed_at, verdict, recipe_id, model_version_id, processing_ms,
-         overall_confidence, source, line_id, engine, bottle_model, level_fraction)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'upload', ?, ?, ?, ?)`,
+         overall_confidence, source, line_id, engine, bottle_model, level_fraction,
+         cap_status, level_status, category, classification_code)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'upload', ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(
-      inspectionId, input.capturedAt ?? now, now, primary.verdict.status, recipe, modelVersionId,
+      inspectionId, input.capturedAt ?? now, now, dbVerdict, recipe, modelVersionId,
       primary.ms != null ? Math.round(primary.ms) : null, Math.min(1, Math.max(0, primary.reading.confidence)),
       input.lineId ?? "line-1", primary.engine, primary.reading.bottle_model, primary.verdict.levelFraction,
+      state.cap, state.level, state.category, state.code,
     );
     const assetId = crypto.randomUUID();
     c.prepare(
@@ -265,21 +276,23 @@ export function recordFeedback(input: FeedbackInput, teacher: TeacherResult): Fe
     const reviewId = crypto.randomUUID();
     c.prepare(
       `INSERT INTO teacher_reviews (id, inspection_id, model, status, verdict, cap_state, bottle_model, defect_codes_json,
-         level_fraction, confidence, reading_json, latency_ms)
-       VALUES (?, ?, ?, 'ok', ?, ?, ?, ?, ?, ?, ?, ?)`,
+         level_fraction, confidence, reading_json, latency_ms, level_status, category, classification_code)
+       VALUES (?, ?, ?, 'ok', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(
       reviewId, inspectionId, teacher.model, teacherVerdict.status, teacher.reading.cap_state, teacher.reading.bottle_model,
       JSON.stringify(teacherVerdict.defects), teacherVerdict.levelFraction, Math.min(1, Math.max(0, teacher.reading.confidence)),
       JSON.stringify({ ...teacher.reading, _width: input.width, _height: input.height }), Math.round(teacher.latencyMs),
+      teacherVerdict.bottle.level, teacherVerdict.bottle.category, teacherVerdict.bottle.code,
     );
     const b = (v: boolean | null) => (v == null ? null : v ? 1 : 0);
     c.prepare(
       `INSERT INTO feedback_comparisons (id, inspection_id, teacher_review_id, model_version_id, outcome, verdict_match,
-         cap_state_match, defects_match, bottle_iou, cap_iou, level_delta)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         cap_state_match, defects_match, category_match, bottle_iou, cap_iou, level_delta)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(
       crypto.randomUUID(), inspectionId, reviewId, modelVersionId, comparison.outcome, b(comparison.verdictMatch),
-      b(comparison.capStateMatch), b(comparison.defectsMatch), comparison.bottleIou, comparison.capIou, comparison.levelDelta,
+      b(comparison.capStateMatch), b(comparison.defectsMatch), b(comparison.categoryMatch),
+      comparison.bottleIou, comparison.capIou, comparison.levelDelta,
     );
     c.prepare(
       `INSERT INTO dataset_samples (id, inspection_id, image_asset_id, bottle_model, label_class, label_source, status, priority, review_reason)

@@ -47,6 +47,17 @@ FOLDER_DEFECTS = {
 }
 FOLDER_CLASSES = list(FOLDER_DEFECTS)
 
+# Clase de la carpeta → categoría esperada (como BottleCategory en src/lib/bottle.ts).
+FOLDER_CATEGORY = {
+    "ok": "OK",
+    "mal_colocada": "ERROR_TAPA",
+    "abierta": "ERROR_TAPA",
+    "sin_tapa": "ERROR_TAPA",
+    "nivel_bajo": "ERROR_NIVEL",
+    "nivel_alto": "ERROR_NIVEL",
+}
+CATEGORIES = ["OK", "ERROR_TAPA", "ERROR_NIVEL", "ERROR_COMBINADO", "INDETERMINADO"]
+
 
 def load_config(path: str | Path | None = None) -> dict:
     """Lee ml/config.yaml, o el archivo de la variable CENTINELA_CONFIG (lo usa smoke_test.py)."""
@@ -117,15 +128,37 @@ def judge(reading: dict, band: dict) -> dict:
     if cap == "ausente":
         defects.append("SIN_TAPA")
     level = None
+    level_status = "no_medido"
     if reading.get("liquid_surface_y") is None or h <= 0:
         defects.append("NIVEL_NO_DETECTADO")
     else:
         level = (reading["liquid_surface_y"] - b["y0"]) / h
-        if level > band["max"]:
+        level_status = "bajo" if level > band["max"] else "alto" if level < band["min"] else "ok"
+        if level_status == "bajo":
             defects.append("NIVEL_BAJO")
-        if level < band["min"]:
+        if level_status == "alto":
             defects.append("NIVEL_ALTO")
-    return {"status": "OK" if not defects else "NOK", "defects": defects, "levelFraction": level}
+    bottle = bottle_state(cap or "ok", level_status, "BOTELLA_NO_DETECTADA" not in defects)
+    return {"status": "OK" if not defects else "NOK", "defects": defects, "levelFraction": level, "bottle": bottle}
+
+
+def bottle_state(cap: str, level: str, detected: bool = True) -> dict:
+    """Misma lógica que la clase Bottle (src/lib/bottle.ts): tapa OR nivel → error; tapa AND nivel → combinado."""
+    cap_error = cap != "ok"
+    level_error = level in ("bajo", "alto")
+    if not detected:
+        category, code = "INDETERMINADO", "INDET:botella_no_detectada"
+    elif cap_error and level_error:
+        category, code = "ERROR_COMBINADO", f"COMB:{cap}+{level}"
+    elif cap_error:
+        category, code = "ERROR_TAPA", f"TAPA:{cap}"
+    elif level_error:
+        category, code = "ERROR_NIVEL", f"NIVEL:{level}"
+    elif level == "no_medido":
+        category, code = "INDETERMINADO", "INDET:nivel_no_medido"
+    else:
+        category, code = "OK", "OK"
+    return {"cap": cap, "level": level, "category": category, "code": code}
 
 
 def level_fraction(reading: dict) -> float | None:

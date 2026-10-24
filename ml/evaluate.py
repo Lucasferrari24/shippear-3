@@ -20,7 +20,16 @@ import numpy as np
 from PIL import Image
 from ultralytics import YOLO
 
-from common import CLASS_CAP_STATE, FOLDER_CLASSES, FOLDER_DEFECTS, judge, load_bands, load_config
+from common import (
+    CATEGORIES,
+    CLASS_CAP_STATE,
+    FOLDER_CATEGORY,
+    FOLDER_CLASSES,
+    FOLDER_DEFECTS,
+    judge,
+    load_bands,
+    load_config,
+)
 
 CAP_CLASSES = set(CLASS_CAP_STATE)
 DEFECT_TO_CLASS = [
@@ -84,6 +93,9 @@ def detections_to_reading(dets: list[tuple[str, float, dict]], img: Image.Image)
 
 
 def predicted_class(verdict: dict) -> str:
+    """Clase de carpeta predicha. En un error combinado gana la tapa, igual que la clase del dataset."""
+    if verdict["bottle"]["category"] == "INDETERMINADO":
+        return "indeterminado"
     for code, cls in DEFECT_TO_CLASS:
         if code in verdict["defects"]:
             return cls
@@ -106,6 +118,7 @@ def main() -> None:
     names = model.names
     bands = load_bands(cfg)
     rows, conf_m = [], collections.defaultdict(collections.Counter)
+    cat_m = collections.defaultdict(collections.Counter)
     for p in images:
         _, bottle_model, folder_class, _ = p.stem.split("__", 3)
         img = Image.open(p).convert("RGB")
@@ -119,9 +132,12 @@ def main() -> None:
         verdict = judge(reading, band)
         pred = predicted_class(verdict)
         conf_m[folder_class][pred] += 1
+        cat_m[FOLDER_CATEGORY[folder_class]][verdict["bottle"]["category"]] += 1
         rows.append({
             "imagen": p.name, "esperado": folder_class, "predicho": pred, "veredicto": verdict["status"],
-            "defectos": verdict["defects"], "nivel": verdict["levelFraction"], "modelo_detectado": reading["bottle_model"],
+            "categoria_esperada": FOLDER_CATEGORY[folder_class], "categoria": verdict["bottle"]["category"],
+            "codigo": verdict["bottle"]["code"], "defectos": verdict["defects"], "nivel": verdict["levelFraction"],
+            "modelo_detectado": reading["bottle_model"],
         })
 
     n = len(rows)
@@ -131,6 +147,7 @@ def main() -> None:
     false_rej = sum(r["veredicto"] == "NOK" for r in exp_ok)
     verdict_ok = n - escapes - false_rej
     exact = sum(r["esperado"] == r["predicho"] for r in rows)
+    cat_ok = sum(r["categoria_esperada"] == r["categoria"] for r in rows)
 
     metrics = model.val(data=str(cfg["work_dir"] / "dataset" / "dataset.yaml"), split=args.split,
                         device=cfg["train"]["device"], verbose=False, plots=False)
@@ -143,6 +160,7 @@ def main() -> None:
         f"- **Veredicto OK/NOK correcto:** {verdict_ok}/{n} ({verdict_ok / n:.0%})",
         f"- **Escapes** (NOK que pasan como OK): {escapes}/{len(exp_nok)}" + (f" ({escapes / len(exp_nok):.0%})" if exp_nok else ""),
         f"- **Falsos rechazos** (OK marcadas NOK): {false_rej}/{len(exp_ok)}" + (f" ({false_rej / len(exp_ok):.0%})" if exp_ok else ""),
+        f"- **Categoría correcta** (OK / tapa / nivel / combinado / indeterminado): {cat_ok}/{n} ({cat_ok / n:.0%})",
         f"- **Defecto exacto:** {exact}/{n} ({exact / n:.0%})",
         f"- **mAP50 detector:** {metrics.box.map50:.3f} · mAP50-95: {metrics.box.map:.3f}",
         f"- mAP50-95 por clase: {per_class_map}",
@@ -156,6 +174,16 @@ def main() -> None:
     for c in FOLDER_CLASSES:
         if conf_m[c]:
             lines.append(f"| {c} | " + " | ".join(str(conf_m[c][k]) for k in cols) + " |")
+    lines += [
+        "",
+        "## Categorías (filas = esperada, columnas = predicha)",
+        "",
+        "| esperada | " + " | ".join(CATEGORIES) + " |",
+        "|---|" + "---|" * len(CATEGORIES),
+    ]
+    for c in CATEGORIES:
+        if cat_m[c]:
+            lines.append(f"| {c} | " + " | ".join(str(cat_m[c][k]) for k in CATEGORIES) + " |")
     report = cfg["work_dir"] / f"eval_{args.split}.md"
     report.write_text("\n".join(lines) + "\n", encoding="utf-8")
     (cfg["work_dir"] / f"eval_{args.split}.json").write_text(json.dumps(rows, ensure_ascii=False, indent=1), encoding="utf-8")

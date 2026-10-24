@@ -1,6 +1,8 @@
 // Tipos y motor de reglas compartidos entre la API y la UI.
 // La IA mide (geometría + estado de tapa); las reglas deciden el veredicto.
 
+import { Bottle, type BottleState, type LevelStatus } from "@/lib/bottle";
+
 export type Box = { x0: number; y0: number; x1: number; y1: number };
 
 export type CapState = "ok" | "mal_colocada" | "abierta" | "ausente";
@@ -38,6 +40,8 @@ export type Verdict = {
   levelFraction: number | null;
   band: LevelBand;
   bandPx: { min: number; max: number };
+  /** Estado de la botella: tapa, nivel y categoría (OK / error de tapa / de nivel / combinado / indeterminado). */
+  bottle: BottleState;
 };
 
 export type InspectionResult = {
@@ -81,14 +85,24 @@ export function judge(reading: VisionReading, band: LevelBand): Verdict {
   if (reading.cap_state === "ausente") defects.push("SIN_TAPA");
 
   let levelFraction: number | null = null;
+  let level: LevelStatus = "no_medido";
   if (reading.liquid_surface_y == null || h <= 0) {
     defects.push("NIVEL_NO_DETECTADO");
   } else {
     levelFraction = (reading.liquid_surface_y - b.y0) / h;
     // Fracción desde arriba: menor = más lleno.
-    if (levelFraction > band.max) defects.push("NIVEL_BAJO");
-    if (levelFraction < band.min) defects.push("NIVEL_ALTO");
+    level = levelFraction > band.max ? "bajo" : levelFraction < band.min ? "alto" : "ok";
+    if (level === "bajo") defects.push("NIVEL_BAJO");
+    if (level === "alto") defects.push("NIVEL_ALTO");
   }
+
+  const bottle = new Bottle(
+    reading.bottle_model,
+    reading.cap_state,
+    level,
+    levelFraction,
+    !defects.includes("BOTELLA_NO_DETECTADA"),
+  );
 
   return {
     status: defects.length === 0 ? "OK" : "NOK",
@@ -96,5 +110,6 @@ export function judge(reading: VisionReading, band: LevelBand): Verdict {
     levelFraction,
     band,
     bandPx: { min: b.y0 + band.min * h, max: b.y0 + band.max * h },
+    bottle: bottle.toState(),
   };
 }

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Overlay } from "@/components/Overlay";
+import { CAP_LABELS, CATEGORY_LABELS, LEVEL_LABELS, type BottleCategory } from "@/lib/bottle";
 import type { FeedbackResult } from "@/lib/feedback";
 import {
   DEFAULT_BANDS,
@@ -179,6 +180,10 @@ export default function Home() {
   const defectCounts = nok
     .flatMap((j) => j.verdict!.defects)
     .reduce<Record<string, number>>((acc, d) => ({ ...acc, [d]: (acc[d] ?? 0) + 1 }), {});
+  const categoryCounts = done.reduce<Partial<Record<BottleCategory, number>>>((acc, j) => {
+    const c = j.verdict!.bottle.category;
+    return { ...acc, [c]: (acc[c] ?? 0) + 1 };
+  }, {});
 
   const current = judged.find((j) => j.key === selected) ?? judged[0];
 
@@ -191,13 +196,19 @@ export default function Home() {
 
   const exportCsv = () => {
     const rows = [
-      ["archivo", "modelo", "veredicto", "defectos", "estado_tapa", "nivel_pct", "confianza", "evidencia"],
+      [
+        "archivo", "modelo", "veredicto", "categoria", "codigo", "estado_tapa", "estado_nivel",
+        "defectos", "nivel_pct", "confianza", "evidencia",
+      ],
       ...done.map((j) => [
         j.name,
         j.result!.reading.bottle_model,
         j.verdict!.status,
+        j.verdict!.bottle.category,
+        j.verdict!.bottle.code,
+        j.verdict!.bottle.cap,
+        j.verdict!.bottle.level,
         j.verdict!.defects.join("|"),
-        j.result!.reading.cap_state,
         j.verdict!.levelFraction != null ? (j.verdict!.levelFraction * 100).toFixed(1) : "",
         j.result!.reading.confidence.toFixed(2),
         j.result!.reading.evidence,
@@ -358,6 +369,20 @@ export default function Home() {
               </p>
             </div>
 
+            {done.length > 0 && (
+              <div className="rounded-xl border border-slate-800 p-4 text-sm">
+                <h3 className="mb-2 font-semibold">Clasificación del lote</h3>
+                {(Object.keys(CATEGORY_LABELS) as BottleCategory[])
+                  .filter((c) => categoryCounts[c])
+                  .map((c) => (
+                    <div key={c} className="flex justify-between">
+                      <span>{CATEGORY_LABELS[c]}</span>
+                      <span className="font-mono">{categoryCounts[c]}</span>
+                    </div>
+                  ))}
+              </div>
+            )}
+
             {nok.length > 0 && (
               <div className="rounded-xl border border-slate-800 p-4 text-sm">
                 <h3 className="mb-2 font-semibold">Defectos del lote</h3>
@@ -423,6 +448,9 @@ function Detail({
         }`}
       >
         {verdict.status}
+        <div className="mt-1 text-xs font-medium tracking-wide">
+          {CATEGORY_LABELS[verdict.bottle.category]} · <span className="font-mono">{verdict.bottle.code}</span>
+        </div>
       </div>
       {verdict.defects.length > 0 && (
         <ul className="mb-3 list-inside list-disc text-red-300">
@@ -435,10 +463,11 @@ function Detail({
         <dt className="text-slate-500">Modelo</dt>
         <dd className="capitalize">{r.bottle_model}</dd>
         <dt className="text-slate-500">Tapa</dt>
-        <dd>{r.cap_state.replace("_", " ")}</dd>
+        <dd>{CAP_LABELS[verdict.bottle.cap]}</dd>
         <dt className="text-slate-500">Nivel</dt>
         <dd>
-          {verdict.levelFraction != null ? `${(verdict.levelFraction * 100).toFixed(1)}%` : "—"}{" "}
+          {LEVEL_LABELS[verdict.bottle.level]}
+          {verdict.levelFraction != null ? ` · ${(verdict.levelFraction * 100).toFixed(1)}%` : ""}{" "}
           <span className="text-slate-500">
             (banda {(verdict.band.min * 100).toFixed(0)}–{(verdict.band.max * 100).toFixed(0)}%)
           </span>

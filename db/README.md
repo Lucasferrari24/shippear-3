@@ -8,6 +8,7 @@ Al abrir la base, [`src/lib/db.ts`](../src/lib/db.ts) aplica en orden las migrac
 |---|---|
 | [`001_initial.sql`](migrations/001_initial.sql) | Esquema v1 entregado por el equipo, sin cambios, con las recetas Clásico y Stevia |
 | [`002_feedback.sql`](migrations/002_feedback.sql) | Líneas de producción, verificación con el maestro, cola del dataset y vistas para tableros |
+| [`003_bottle_state.sql`](migrations/003_bottle_state.sql) | Estado de cada botella (tapa y nivel) y su categoría |
 
 > En Vercel el disco no persiste: la base y las fotos solo sirven corriendo la app en local. Para producción, el mismo esquema se puede pasar a Postgres o Turso.
 
@@ -43,6 +44,31 @@ Al abrir la base, [`src/lib/db.ts`](../src/lib/db.ts) aplica en orden las migrac
 | `v_line_daily` | Total, OK, NOK y tiempo medio por línea y día |
 | `v_line_defects` | Defectos por línea y día |
 | `v_model_agreement` | Qué tanto coincide cada versión del modelo local con el maestro |
+
+## Estado y categoría de cada botella (migración 003)
+
+Cada botella procesada es un objeto `Bottle` ([`src/lib/bottle.ts`](../src/lib/bottle.ts)) con dos variables de estado. La categoría sale de combinarlas.
+
+| Variable | Valores |
+|---|---|
+| `cap_status` (tapa) | `ok` · `mal_colocada` (desnivelada o apoyada) · `abierta` (destapada, capuchón levantado) · `ausente` |
+| `level_status` (nivel) | `ok` · `bajo` · `alto` · `no_medido` |
+
+| Categoría | Regla | Código de clasificación | Veredicto en la base |
+|---|---|---|---|
+| `OK` | tapa `ok` y nivel `ok` | `OK` | `OK` |
+| `ERROR_TAPA` | tapa con error y nivel sin error | `TAPA:<tapa>` | `NOK` |
+| `ERROR_NIVEL` | nivel `bajo`/`alto` y tapa `ok` | `NIVEL:<nivel>` | `NOK` |
+| `ERROR_COMBINADO` | tapa con error **y** nivel con error | `COMB:<tapa>+<nivel>` | `NOK` |
+| `INDETERMINADO` | botella no detectada, o tapa `ok` sin nivel medible | `INDET:<motivo>` | `REVIEW` |
+
+En total son 3 estados de error de tapa y 2 de nivel, lo que da 3 + 2 + 6 combinaciones de error posibles. La vista `v_state_matrix` las cuenta por línea.
+
+Dos decisiones a tener en cuenta:
+- **Tapa con error y nivel no medido** es `ERROR_TAPA`: el error de tapa ya está confirmado, aunque falte el nivel.
+- **`INDETERMINADO` nunca pasa como OK.** En la app se muestra como NOK y en la base queda en `REVIEW`.
+
+La misma lógica está en `ml/common.py` (`bottle_state`) para la evaluación. Las dos implementaciones se probaron con las 17 combinaciones.
 
 ## Equivalencia de defectos
 
