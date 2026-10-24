@@ -42,3 +42,9 @@ yarn-error.log*
 next-env.d.ts
 .claude/settings.local.json
 .claude/worktrees/
+
+# dataset: imágenes de producción (privadas); solo se versiona la estructura
+/data/**/*
+!/data/**/
+!/data/README.md
+!/data/**/.gitkeep

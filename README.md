@@ -30,6 +30,21 @@ Separamos **percepción** de **decisión**:
 
 El líquido es incoloro y el envase transparente, así que un umbral de píxeles clásico es frágil frente a reflejos e iluminación. El modelo de visión ubica el menisco por refracción y contexto. Las tolerancias, en cambio, quedan del lado de las reglas, donde el equipo de calidad las controla.
 
+## Datos y entrenamiento
+
+No usamos datasets públicos: ninguno tiene tapas a presión con capuchón ni nivel de líquido incoloro (el análisis está en [`docs/investigacion-vision-qc-botellas-tapas.md`](docs/investigacion-vision-qc-botellas-tapas.md)). El dataset es propio:
+
+- **Fotos reales de producción** de los modelos Clásico y Stevia.
+- **Variaciones generadas con Gemini** a partir de esas fotos, con cada defecto: unas 100 imágenes en total.
+- **Un set de fotos reales reservado** para evaluar, que nunca se usa para entrenar.
+
+La estructura y las reglas están en [`data/README.md`](data/README.md). Las imágenes no se suben al repo.
+
+**En construcción:**
+
+1. **Modelo local.** Un detector liviano exportado a ONNX que corre en el navegador, sin red. Claude queda como modelo maestro.
+2. **Modo de recolección.** Es opcional y viene desactivado. Guarda cada foto con la predicción local y la del maestro, y manda los desacuerdos a revisión humana. Esas fotos revisadas alimentan el reentrenamiento.
+
 ## Stack
 
 - Next.js 15 (App Router) + React 19 + Tailwind 4
@@ -51,8 +66,8 @@ Abrí http://localhost:3000 y arrastrá fotos.
 
 La integración con la línea de producción (PLC, cámara en línea, expulsor) no entra en este hackathon. Los siguientes pasos serían:
 
-- una segunda pasada de IA con un recorte ampliado de la tapa;
-- un modelo liviano destilado de las mediciones para correr en el borde (sin red);
+- procesar video directamente, inspeccionando una vez cada botella que pasa;
+- reentrenar por lotes con las fotos revisadas del modo de recolección;
 - un tablero de tendencias por turno.
 
 ## Equipo
