@@ -26,8 +26,8 @@ const H = 1200;
 
 /** Bandas del lote demo, calibradas sobre botellas OK de referencia. */
 export const MOCK_BANDS: Bands = {
-  clasico: { min: 0.38, max: 0.46 },
-  stevia: { min: 0.42, max: 0.5 },
+  clasico: { min: 0.24, max: 0.38 },
+  stevia: { min: 0.22, max: 0.32 },
 };
 
 type Base = { reading: VisionReading };
@@ -257,8 +257,147 @@ export function classFor(cap: CapState, level: LevelStatus): DatasetClass | null
 
 /** Lecturas que el maestro "devolvería" para cada foto conocida del lote demo. */
 export function mockReadingByName(name: string): VisionReading | null {
+  const demo = DEMO_PHOTOS.find((d) => d.name === name);
+  if (demo) return demo.reading;
   const v = VARIANTS.find((x) => x.name === name);
   return v ? readingFor(v) : null;
+}
+
+// --- Lote demo hardcodeado con fotos reales de la línea ---
+type DemoPhoto = { name: string; src: string; width: number; height: number; reading: VisionReading };
+
+const PAR = { src: "/demo/par-stevia-clasico.jpeg", width: 720, height: 1280 };
+const PNG = { width: 941, height: 1672 };
+
+export const DEMO_PHOTOS: DemoPhoto[] = [
+  {
+    name: "L1-0901-par · stevia.jpeg",
+    ...PAR,
+    reading: {
+      bottle_model: "stevia",
+      bottle_box: { x0: 100, y0: 290, x1: 298, y1: 1010 },
+      cap_state: "ok",
+      cap_box: { x0: 130, y0: 290, x1: 250, y1: 436 },
+      spout_box: { x0: 168, y0: 436, x1: 230, y1: 456 },
+      cap_gap_px: 0,
+      liquid_surface_y: 485,
+      confidence: 0.95,
+      evidence: "Tapa verde asentada a ras del pico. Menisco visible debajo del hombro del envase.",
+    },
+  },
+  {
+    name: "L1-0901-par · clasico.jpeg",
+    ...PAR,
+    reading: {
+      bottle_model: "clasico",
+      bottle_box: { x0: 398, y0: 290, x1: 588, y1: 1010 },
+      cap_state: "ok",
+      cap_box: { x0: 443, y0: 290, x1: 563, y1: 436 },
+      spout_box: { x0: 470, y0: 436, x1: 535, y1: 456 },
+      cap_gap_px: 0,
+      liquid_surface_y: 487,
+      confidence: 0.95,
+      evidence: "Tapa roja cerrada sin separación con el pico. Nivel a la altura del hombro.",
+    },
+  },
+  {
+    name: "L1-0902-stevia-frente.jpeg",
+    src: "/demo/stevia-frente.jpeg",
+    width: 720,
+    height: 1280,
+    reading: {
+      bottle_model: "stevia",
+      bottle_box: { x0: 258, y0: 320, x1: 458, y1: 1090 },
+      cap_state: "ok",
+      cap_box: { x0: 292, y0: 320, x1: 414, y1: 470 },
+      spout_box: { x0: 330, y0: 470, x1: 400, y1: 490 },
+      cap_gap_px: 0,
+      liquid_surface_y: 522,
+      confidence: 0.92,
+      evidence: "Tapa verde correcta. Etiqueta girada pero el menisco se lee con claridad.",
+    },
+  },
+  {
+    name: "L1-0903-stevia-dorso.jpeg",
+    src: "/demo/stevia-dorso.jpeg",
+    width: 720,
+    height: 1280,
+    reading: {
+      bottle_model: "stevia",
+      bottle_box: { x0: 190, y0: 326, x1: 392, y1: 1098 },
+      cap_state: "ok",
+      cap_box: { x0: 225, y0: 326, x1: 347, y1: 476 },
+      spout_box: { x0: 260, y0: 476, x1: 330, y1: 496 },
+      cap_gap_px: 0,
+      liquid_surface_y: 526,
+      confidence: 0.9,
+      evidence: "Vista del dorso. Tapa cerrada y burbujas en la superficie del líquido.",
+    },
+  },
+  {
+    name: "L1-0904-clasico-mal-colocada.png",
+    src: "/demo/clasico-mal-colocada.png",
+    ...PNG,
+    reading: {
+      bottle_model: "clasico",
+      bottle_box: { x0: 255, y0: 350, x1: 530, y1: 1420 },
+      cap_state: "mal_colocada",
+      cap_box: { x0: 298, y0: 350, x1: 470, y1: 552 },
+      spout_box: { x0: 300, y0: 540, x1: 466, y1: 580 },
+      cap_gap_px: 22,
+      liquid_surface_y: 660,
+      confidence: 0.89,
+      evidence: "La tapa roja quedó inclinada sobre la rosca; se ven los filetes entre la tapa y el pico.",
+    },
+  },
+  {
+    name: "L1-0905-clasico-abierta.png",
+    src: "/demo/clasico-abierta.png",
+    ...PNG,
+    reading: {
+      bottle_model: "clasico",
+      bottle_box: { x0: 318, y0: 372, x1: 580, y1: 1395 },
+      cap_state: "abierta",
+      cap_box: { x0: 366, y0: 372, x1: 536, y1: 588 },
+      spout_box: { x0: 380, y0: 505, x1: 516, y1: 535 },
+      cap_gap_px: 28,
+      liquid_surface_y: 720,
+      confidence: 0.91,
+      evidence: "Capuchón flip-top levantado: hay una separación clara entre el capuchón y el anillo.",
+    },
+  },
+  {
+    name: "L1-0906-clasico-inclinada.png",
+    src: "/demo/clasico-inclinada.png",
+    ...PNG,
+    reading: {
+      bottle_model: "clasico",
+      bottle_box: { x0: 318, y0: 370, x1: 580, y1: 1425 },
+      cap_state: "mal_colocada",
+      cap_box: { x0: 380, y0: 370, x1: 546, y1: 590 },
+      spout_box: { x0: 386, y0: 500, x1: 530, y1: 535 },
+      cap_gap_px: 32,
+      liquid_surface_y: 735,
+      confidence: 0.87,
+      evidence: "Capuchón torcido hacia la izquierda y sin calzar sobre el anillo.",
+    },
+  },
+];
+
+export function demoItems(bands: Bands): Item[] {
+  return DEMO_PHOTOS.map((d, i) => {
+    const result = buildResult(d.reading, bands, i, d.width, d.height);
+    return {
+      key: `demo-${i}`,
+      name: d.name,
+      src: d.src,
+      width: d.width,
+      height: d.height,
+      status: "done",
+      result,
+      feedback: mockFeedback(result, i),
+    };
+  });
 }
 
 // --- PRNG determinístico para que server y cliente generen lo mismo ---

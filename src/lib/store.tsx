@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import * as api from "./api";
 import { DEFAULT_BANDS, bandKey, calibratedBand, judge, type Bands } from "./judge";
 import { MODEL_LABELS } from "./labels";
-import { MOCK_BANDS } from "./mock";
+import { MOCK_BANDS, demoItems } from "./mock";
 import type { BottleCategory, BottleModel, Item, LevelBand } from "./types";
 
 export const COLLECT_KEY = "lavirshion.collect";
@@ -44,9 +44,9 @@ function readImage(file: File): Promise<Pick<Item, "src" | "width" | "height">> 
 }
 
 export function StoreProvider({ children }: { children: ReactNode }) {
-  const [raw, setRaw] = useState<Item[]>([]);
+  const [raw, setRaw] = useState<Item[]>(() => demoItems(MOCK_BANDS));
   const [bands, setBands] = useState<Bands>(MOCK_BANDS);
-  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const [selectedKey, setSelectedKey] = useState<string | null>("demo-4");
   const [filter, setFilter] = useState<Filter>("all");
   const [collect, setCollectState] = useState(false);
   const inflight = useRef(new Set<string>());
