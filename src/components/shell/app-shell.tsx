@@ -2,13 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChartArea, Cpu, Database, Layers, Ruler, ScanEye, ScanLine } from "lucide-react";
+import { ChartArea, Cpu, Database, Layers, ScanEye, ScanLine } from "lucide-react";
 import { cn } from "cn";
 import { useStore } from "@/lib/store";
 
 export const SECTIONS = [
   { href: "/", label: "Inspeccionar", short: "Inspección", icon: ScanLine, color: "var(--foreground)" },
-  { href: "/calibracion", label: "Calibración", short: "Banda", icon: Ruler, color: "var(--level)" },
   { href: "/recoleccion", label: "Recolección", short: "Recolectar", icon: Database, color: "var(--dataset)" },
   { href: "/dataset", label: "Dataset", short: "Dataset", icon: Layers, color: "var(--dataset)" },
   { href: "/tablero", label: "Tablero", short: "Tablero", icon: ChartArea, color: "var(--line-fg)" },

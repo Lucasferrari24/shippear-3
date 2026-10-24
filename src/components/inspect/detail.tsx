@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Crosshair, Database, Quote, RefreshCw, TriangleAlert } from "lucide-react";
+import { Database, Quote, RefreshCw, TriangleAlert } from "lucide-react";
 import { cn } from "cn";
 import { DEFECT_DOMAIN, DEFECT_LABELS, SAMPLE_LABELS } from "@/lib/labels";
 import { useStore } from "@/lib/store";
@@ -14,7 +14,7 @@ import { Ring } from "@/components/qc/motion-bits";
 const DOMAIN_COLOR = { cap: "var(--cap)", level: "var(--level)", process: "var(--process)" } as const;
 
 export function Detail({ item, className }: { item: Item; className?: string }) {
-  const { retry, calibrate } = useStore();
+  const { retry } = useStore();
   const [layers, setLayers] = useState<Set<Layer>>(() => new Set(ALL_LAYERS));
   const r = item.result;
   const v = r?.verdict;
@@ -130,17 +130,6 @@ export function Detail({ item, className }: { item: Item; className?: string }) 
                 )}
               </p>
             </div>
-          )}
-
-          {v.levelFraction != null && r.reading.bottle_model !== "desconocido" && (
-            <button
-              type="button"
-              onClick={() => calibrate(item.key)}
-              className="flex h-12 items-center justify-center gap-2 rounded-full border border-level/40 bg-level/10 px-4 text-sm font-semibold text-level transition-colors hover:bg-level/15"
-            >
-              <Crosshair className="size-4" aria-hidden />
-              Usar como referencia OK
-            </button>
           )}
         </>
       )}

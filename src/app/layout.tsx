@@ -11,7 +11,7 @@ const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"]
 
 export const metadata: Metadata = {
   title: "LaVirshion · Control de calidad por visión",
-  description: "Control de calidad por visión con IA para la línea de envasado de Virginia: tapa, nivel, calibración y trazabilidad.",
+  description: "Control de calidad por visión con IA para la línea de envasado de Virginia: tapa, nivel y trazabilidad.",
 };
 
 export const viewport: Viewport = {
