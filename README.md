@@ -42,9 +42,30 @@ La estructura y las reglas están en [`data/README.md`](data/README.md). Las im�
 
 **Modelo local y maestro:**
 
-1. **Modelo local:** un detector YOLO nano entrenado con [`ml/`](ml/README.md) y exportado a ONNX en `public/models/`. Falta integrarlo para que corra en el navegador.
+1. **Modelo local:** un detector YOLO nano entrenado con [`ml/`](ml/README.md) y exportado a ONNX en `public/models/`. Corre en el servidor con `onnxruntime-node`, en [`src/lib/localModel.ts`](src/lib/localModel.ts).
 2. **Modelo maestro:** Claude Opus 5.5, en [`src/lib/teacher.ts`](src/lib/teacher.ts), con salida estructurada.
 3. **Modo de recolección:** un interruptor en la interfaz, desactivado por defecto. Cada foto se verifica con el maestro y se compara con el modelo local. Todo se guarda en SQLite: [`db/README.md`](db/README.md) tiene el esquema y la cola del dataset. Las muestras aprobadas vuelven al entrenamiento con `ml/export_feedback.py`.
+
+## API
+
+Las tres rutas reciben `{ "image": "data:image/jpeg;base64,...", "width": 1280, "height": 960 }`. `band` (`{ "min", "max" }`) es opcional.
+
+| Ruta | Modelo | Devuelve |
+|---|---|---|
+| `POST /api/predict` | YOLO local (ONNX) | Lectura, veredicto con el estado de la botella y las detecciones crudas. Si no hay modelo entrenado, responde 503 |
+| `POST /api/inspect` | Claude (maestro) | Lectura y veredicto con el estado de la botella |
+| `POST /api/feedback` | Los dos en paralelo | Guarda la foto, las dos decisiones y la comparación en la base. Si el cliente no manda `local`, el servidor corre el YOLO |
+| `GET /api/feedback` | — | Resumen de la cola del dataset y coincidencia del YOLO con el maestro |
+| `PATCH /api/dataset/<id>` | — | Revisión humana de una muestra |
+
+Ejemplo:
+
+```bash
+curl -s localhost:3000/api/predict -H "content-type: application/json" \
+  -d "{\"image\":\"data:image/jpeg;base64,$(base64 -w0 foto.jpg)\",\"width\":1280,\"height\":960}"
+```
+
+`width` y `height` son las medidas de la imagen enviada: las cajas vuelven en esos píxeles.
 
 ## Stack
 
@@ -53,7 +74,8 @@ La estructura y las reglas están en [`data/README.md`](data/README.md). Las im�
 - SQLite con `node:sqlite` (Node 22.5 o superior), en [`src/lib/db.ts`](src/lib/db.ts) y [`db/`](db/README.md)
 - YOLO (Ultralytics) para el modelo local, en [`ml/`](ml/README.md)
 - Overlay en Canvas, en [`src/components/Overlay.tsx`](src/components/Overlay.tsx)
-- Deploy en Vercel (la recolección de datos necesita correr en local: el disco de Vercel no persiste)
+- `onnxruntime-node` y `sharp` para correr el YOLO en el servidor
+- Deploy en Vercel (la recolección de datos necesita correr en local: el disco de Vercel no persiste). `onnxruntime-node` pesa unos 300 MB con binarios de todas las plataformas: si la función de Vercel supera el límite de tamaño, `/api/predict` tiene que correr en local o en un servidor propio
 
 ## Correr localmente
 
