@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Overlay } from "@/components/Overlay";
 import { CAP_LABELS, CATEGORY_LABELS, LEVEL_LABELS, type BottleCategory } from "@/lib/bottle";
@@ -230,7 +231,10 @@ export default function Home() {
             Control de calidad por visión para la línea de envasado de Virginia · tapa y nivel de llenado, foto por foto.
           </p>
         </div>
-        <div className="flex gap-2 text-sm">
+        <div className="flex items-center gap-2 text-sm">
+          <Link href="/camara" className="mr-2 rounded-lg bg-sky-700 px-3 py-2 font-medium hover:bg-sky-600">
+            Cámara en vivo →
+          </Link>
           <Stat label="Inspeccionadas" value={done.length} />
           <Stat label="OK" value={done.length - nok.length} tone="ok" />
           <Stat label="NOK" value={nok.length} tone="nok" />

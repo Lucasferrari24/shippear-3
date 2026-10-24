@@ -84,7 +84,7 @@ La misma lógica está en `ml/common.py` (`bottle_state`) para la evaluación. L
 
 ## Reglas de la cola del dataset
 
-- La clase la propone el maestro (Claude Opus 5.5).
+- La clase la propone el maestro (Claude, el modelo de `CLAUDE_MODEL`).
 - La muestra se **aprueba sola** cuando el maestro pudo medir todo y su confianza es de al menos 0,7. El umbral se cambia con `FEEDBACK_MIN_TEACHER_CONF`.
 - Si no, queda **pendiente** de revisión humana.
 - Los desacuerdos con el modelo local llevan prioridad 1, para revisarlos primero aunque estén aprobados.

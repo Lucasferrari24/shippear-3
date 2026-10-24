@@ -4,7 +4,22 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { VisionReading } from "@/lib/inspection";
 
-export const TEACHER_MODEL = process.env.CLAUDE_MODEL ?? "claude-opus-5-5";
+// Por defecto el más barato (Haiku 5.5); scripts/compare-teachers.ts mide si alcanza contra Sonnet/Opus.
+export const TEACHER_MODEL = process.env.CLAUDE_MODEL ?? "claude-haiku-5-5";
+
+export type Effort = "low" | "medium" | "high" | "xhigh" | "max";
+const TEACHER_EFFORT = (process.env.CLAUDE_EFFORT ?? "medium") as Effort;
+
+/** USD por millón de tokens (entrada / salida), lista de Anthropic del 06/10/2026. Haiku: prompts ≤ 100K tokens. */
+export const PRICES: Record<string, { input: number; output: number }> = {
+  "claude-haiku-5-5": { input: 0.1, output: 0.5 },
+  "claude-sonnet-5-5": { input: 2, output: 10 },
+  "claude-opus-5-5": { input: 4, output: 20 },
+  "claude-fable-5-1": { input: 10, output: 50 },
+};
+
+/** Modelos que aceptan `fallbacks: "default"` (Haiku 5.5 no tiene respaldo del servidor). */
+const FALLBACK_MODELS = new Set(["claude-opus-5-5", "claude-opus-5", "claude-sonnet-5-5", "claude-fable-5-1"]);
 
 const box = {
   type: "object",
@@ -59,24 +74,31 @@ Mirá con atención el borde entre tapa y pico antes de decidir: las separacione
 
 export class TeacherError extends Error {}
 
-export type TeacherResult = { reading: VisionReading; model: string; latencyMs: number };
+export type TeacherUsage = { inputTokens: number; outputTokens: number; costUsd: number | null };
+
+export type TeacherResult = { reading: VisionReading; model: string; latencyMs: number; usage: TeacherUsage };
 
 /** Pide al maestro la medición de una imagen (data URL jpeg/png/webp). */
-export async function askTeacher(image: string, width: number, height: number): Promise<TeacherResult> {
+export async function askTeacher(
+  image: string,
+  width: number,
+  height: number,
+  opts: { model?: string; effort?: Effort } = {},
+): Promise<TeacherResult> {
   const match = /^data:(image\/(?:jpeg|png|webp));base64,(.+)$/.exec(image ?? "");
   if (!match) throw new TeacherError("La imagen debe ser un data URL jpeg/png/webp.");
 
+  const model = opts.model ?? TEACHER_MODEL;
   const client = new Anthropic();
   const started = Date.now();
   const msg = await client.beta.messages.create({
-    model: TEACHER_MODEL,
+    model,
     max_tokens: 16000,
     system: SYSTEM,
     // Si un clasificador de seguridad rechaza la foto, el servidor reintenta con el modelo de respaldo recomendado.
-    betas: ["server-side-fallback-2026-07-01"],
-    fallbacks: "default",
+    ...(FALLBACK_MODELS.has(model) ? { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" as const } : {}),
     output_config: {
-      effort: "medium",
+      effort: opts.effort ?? TEACHER_EFFORT,
       format: { type: "json_schema", schema: READING_SCHEMA },
     },
     messages: [
@@ -101,5 +123,16 @@ export async function askTeacher(image: string, width: number, height: number): 
   const text = msg.content.find((c) => c.type === "text");
   if (!text || text.type !== "text") throw new TeacherError("El maestro no devolvió una medición.");
 
-  return { reading: JSON.parse(text.text) as VisionReading, model: msg.model, latencyMs: Date.now() - started };
+  // Si hubo respaldo, msg.model es el modelo que respondió; el costo se estima con su precio.
+  const price = PRICES[msg.model] ?? PRICES[model];
+  const inputTokens = msg.usage.input_tokens + (msg.usage.cache_read_input_tokens ?? 0) + (msg.usage.cache_creation_input_tokens ?? 0);
+  const outputTokens = msg.usage.output_tokens;
+  const costUsd = price ? (inputTokens * price.input + outputTokens * price.output) / 1e6 : null;
+
+  return {
+    reading: JSON.parse(text.text) as VisionReading,
+    model: msg.model,
+    latencyMs: Date.now() - started,
+    usage: { inputTokens, outputTokens, costUsd },
+  };
 }

@@ -14,6 +14,7 @@ import {
   type Verdict,
   type VisionReading,
 } from "@/lib/inspection";
+import type { BottleState } from "@/lib/bottle";
 import type { TeacherResult } from "@/lib/teacher";
 
 /** Clases del detector, en el mismo orden que ml/config.yaml. */
@@ -60,6 +61,12 @@ export type FeedbackInput = {
   capturedAt?: string;
   band?: LevelBand;
   local?: LocalPrediction;
+  /** Origen de la foto: 'camera' para la cámara en vivo, 'upload' (por defecto) para fotos subidas. */
+  source?: "camera" | "upload";
+  /** Estado votado por el rastreador de la cámara: manda sobre el del cuadro guardado. */
+  state?: BottleState;
+  /** Datos del rastreo: cuadros vistos y votos por código. */
+  track?: { frames: number; votes: Record<string, number> };
 };
 
 export type Comparison = {
@@ -202,6 +209,107 @@ function insertDetections(conn: Db, inspectionId: string, dets: Detection[], sou
   }
 }
 
+/** Defectos que corresponden a un estado de botella (los mismos que daría judge()). */
+function stateDefects(s: BottleState): DefectCode[] {
+  if (!s.detected) return ["BOTELLA_NO_DETECTADA"];
+  const out: DefectCode[] = [];
+  if (s.cap === "mal_colocada") out.push("TAPA_MAL_COLOCADA");
+  if (s.cap === "abierta") out.push("TAPA_ABIERTA");
+  if (s.cap === "ausente") out.push("SIN_TAPA");
+  if (s.level === "bajo") out.push("NIVEL_BAJO");
+  if (s.level === "alto") out.push("NIVEL_ALTO");
+  if (s.level === "no_medido") out.push("NIVEL_NO_DETECTADO");
+  return out;
+}
+
+type SavedImage = ReturnType<typeof saveImage>;
+
+/**
+ * Inserta la inspección, su foto, sus defectos y la medición de nivel. Devuelve el id de la foto.
+ * Si viene `input.state` (el estado votado por el rastreador de la cámara), manda sobre el del cuadro.
+ */
+function insertInspection(
+  c: Db,
+  a: {
+    id: string; img: SavedImage; input: FeedbackInput; engine: "local" | "teacher"; modelVersionId: string | null;
+    reading: VisionReading; verdict: Verdict; ms: number | null;
+  },
+): string {
+  const now = new Date().toISOString();
+  const state = a.input.state ?? a.verdict.bottle;
+  const defects = stateDefects(state);
+  const model = state.model ?? a.reading.bottle_model;
+  const recipe = model === "desconocido" ? null : `recipe-${model}`;
+  // INDETERMINADO no pasa como OK ni se cuenta como defecto: queda en REVIEW.
+  const dbVerdict = state.category === "INDETERMINADO" ? "REVIEW" : state.category === "OK" ? "OK" : "NOK";
+  const confidence = Math.min(1, Math.max(0, a.reading.confidence));
+  c.prepare(
+    `INSERT INTO inspections (id, captured_at, processed_at, verdict, recipe_id, model_version_id, processing_ms,
+       overall_confidence, source, line_id, engine, bottle_model, level_fraction,
+       cap_status, level_status, category, classification_code)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(
+    a.id, a.input.capturedAt ?? now, now, dbVerdict, recipe, a.modelVersionId,
+    a.ms != null ? Math.round(a.ms) : null, confidence, a.input.source ?? "upload",
+    a.input.lineId ?? "line-1", a.engine, model, state.levelFraction,
+    state.cap, state.level, state.category, state.code,
+  );
+  const assetId = crypto.randomUUID();
+  c.prepare(
+    "INSERT INTO image_assets (id, inspection_id, kind, relative_path, mime_type, sha256, bytes, width, height) VALUES (?, ?, 'original', ?, ?, ?, ?, ?, ?)",
+  ).run(assetId, a.id, a.img.rel, a.img.mime, a.img.sha256, a.img.bytes, a.input.width, a.input.height);
+
+  const defect = c.prepare("INSERT INTO defects (id, inspection_id, code, confidence, details_json) VALUES (?, ?, ?, ?, ?)");
+  for (const d of defects) {
+    const details = { engine: a.engine, app_code: d, ...(a.input.track ? { track: a.input.track } : {}) };
+    defect.run(crypto.randomUUID(), a.id, DB_DEFECT[d], confidence, JSON.stringify(details));
+  }
+  if (state.levelFraction != null) {
+    c.prepare(
+      "INSERT INTO inspection_measurements (id, inspection_id, metric, value, unit, lower_limit, upper_limit, passed) VALUES (?, ?, 'fill_level', ?, 'fraction', ?, ?, ?)",
+    ).run(
+      crypto.randomUUID(), a.id, state.levelFraction, a.verdict.band.min, a.verdict.band.max,
+      state.level === "bajo" || state.level === "alto" ? 0 : 1,
+    );
+  }
+  return assetId;
+}
+
+export type InspectionInput = FeedbackInput & {
+  /** Qué modelo produjo la lectura: el YOLO local o Claude. */
+  engine: "local" | "teacher";
+  /** La lectura y las detecciones del cuadro elegido (para el YOLO, las que devolvió /api/predict). */
+  reading: VisionReading;
+  detections?: Detection[];
+  latencyMs?: number;
+  modelVersion?: string;
+};
+
+/**
+ * Guarda una botella sin pasar por el maestro: la decisión del modelo que la analizó, su foto y su estado.
+ * Es lo que usa la cámara para que el tablero cuente todo lo que pasa por la línea, sin costo de API.
+ */
+export function recordInspection(input: InspectionInput): { inspectionId: string; state: BottleState } {
+  const conn = getDb();
+  const inspectionId = crypto.randomUUID();
+  const img = saveImage(inspectionId, input.image);
+  const verdict = judge(input.reading, bandFor(conn, input.reading.bottle_model, input.band));
+  tx((c) => {
+    const modelVersionId = input.engine === "local" && input.modelVersion
+      ? upsertModelVersion(c, { name: input.modelVersion })
+      : null;
+    insertInspection(c, {
+      id: inspectionId, img, input, engine: input.engine, modelVersionId,
+      reading: input.reading, verdict, ms: input.latencyMs ?? null,
+    });
+    insertDetections(
+      c, inspectionId, input.detections ?? readingToDetections(input.reading, input.reading.confidence),
+      input.engine === "local" ? "model" : "teacher",
+    );
+  });
+  return { inspectionId, state: input.state ?? verdict.bottle };
+}
+
 /**
  * Guarda una inspección verificada por el maestro.
  * El veredicto de la inspección es el del modelo local si vino; si no, el del maestro.
@@ -234,44 +342,14 @@ export function recordFeedback(input: FeedbackInput, teacher: TeacherResult): Fe
 
   tx((c) => {
     const modelVersionId = input.local ? upsertModelVersion(c, input.local.modelVersion) : null;
-    const now = new Date().toISOString();
-    const recipe = primary.reading.bottle_model === "desconocido" ? null : `recipe-${primary.reading.bottle_model}`;
-    const state = primary.verdict.bottle;
-    // INDETERMINADO no pasa como OK ni se cuenta como defecto: queda en REVIEW.
-    const dbVerdict = state.category === "INDETERMINADO" ? "REVIEW" : primary.verdict.status;
-    c.prepare(
-      `INSERT INTO inspections (id, captured_at, processed_at, verdict, recipe_id, model_version_id, processing_ms,
-         overall_confidence, source, line_id, engine, bottle_model, level_fraction,
-         cap_status, level_status, category, classification_code)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'upload', ?, ?, ?, ?, ?, ?, ?, ?)`,
-    ).run(
-      inspectionId, input.capturedAt ?? now, now, dbVerdict, recipe, modelVersionId,
-      primary.ms != null ? Math.round(primary.ms) : null, Math.min(1, Math.max(0, primary.reading.confidence)),
-      input.lineId ?? "line-1", primary.engine, primary.reading.bottle_model, primary.verdict.levelFraction,
-      state.cap, state.level, state.category, state.code,
-    );
-    const assetId = crypto.randomUUID();
-    c.prepare(
-      "INSERT INTO image_assets (id, inspection_id, kind, relative_path, mime_type, sha256, bytes, width, height) VALUES (?, ?, 'original', ?, ?, ?, ?, ?, ?)",
-    ).run(assetId, inspectionId, img.rel, img.mime, img.sha256, img.bytes, input.width, input.height);
-
+    const assetId = insertInspection(c, {
+      id: inspectionId, img, input, engine: primary.engine as "local" | "teacher", modelVersionId,
+      reading: primary.reading, verdict: primary.verdict, ms: primary.ms,
+    });
     if (input.local) {
       insertDetections(c, inspectionId, input.local.detections ?? readingToDetections(input.local.reading, input.local.reading.confidence), "model");
     }
     insertDetections(c, inspectionId, readingToDetections(teacher.reading, teacher.reading.confidence), "teacher");
-
-    const defect = c.prepare("INSERT INTO defects (id, inspection_id, code, confidence, details_json) VALUES (?, ?, ?, ?, ?)");
-    for (const d of primary.verdict.defects) {
-      defect.run(crypto.randomUUID(), inspectionId, DB_DEFECT[d], Math.min(1, Math.max(0, primary.reading.confidence)), JSON.stringify({ engine: primary.engine, app_code: d }));
-    }
-    if (primary.verdict.levelFraction != null) {
-      c.prepare(
-        "INSERT INTO inspection_measurements (id, inspection_id, metric, value, unit, lower_limit, upper_limit, passed) VALUES (?, ?, 'fill_level', ?, 'fraction', ?, ?, ?)",
-      ).run(
-        crypto.randomUUID(), inspectionId, primary.verdict.levelFraction, primary.verdict.band.min, primary.verdict.band.max,
-        primary.verdict.defects.some((d) => d === "NIVEL_BAJO" || d === "NIVEL_ALTO") ? 0 : 1,
-      );
-    }
 
     const reviewId = crypto.randomUUID();
     c.prepare(
