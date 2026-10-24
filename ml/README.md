@@ -67,6 +67,17 @@ El pipeline corre los seis pasos en orden. Si uno falla, se retoma desde ahí co
 
 `autolabel.py` guarda cada respuesta del maestro: volver a correrlo solo consulta las imágenes nuevas. Con `--relabel` regenera las etiquetas sin llamar a la API.
 
+## Entrenar en Colab (GPU)
+
+Para no esperar el entrenamiento en CPU, el paso `train` se puede correr en Colab con [`colab_train.ipynb`](colab_train.ipynb):
+
+1. En la PC, con la app corriendo: `autolabel.py` y `build_dataset.py`.
+2. Comprimir el dataset desde la raíz del repo: `Compress-Archive -Path ml\work\dataset -DestinationPath dataset.zip -Force`.
+3. Abrir el notebook en Colab con GPU T4, subir `dataset.zip` y ejecutar las celdas. El notebook corrige la ruta del `dataset.yaml` y entrena con los parámetros de `config.yaml`, salvo `device: 0` y `batch: 32`.
+4. Copiar el `best.pt` descargado en `ml/work/best.pt` y seguir con `pipeline.py --from evaluate`.
+
+Si se cambian los parámetros de `train:` en `config.yaml`, hay que cambiarlos también en el notebook.
+
 ## Probar el entorno sin imágenes
 
 ```powershell
