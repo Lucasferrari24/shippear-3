@@ -1,0 +1,37 @@
+# Blueprint de Render: el backend (API + modelo ONNX ya entrenado + SQLite).
+# La interfaz se despliega aparte en Vercel y llama a este servicio con NEXT_PUBLIC_API_URL.
+services:
+  - type: web
+    name: lavirshion-api
+    runtime: node
+    rootDir: backend
+    # El disco persistente (base y fotos) necesita un plan pago; Starter alcanza.
+    plan: starter
+    region: virginia
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      # Base SQLite y fotos guardadas, en el disco persistente.
+      - key: DATA_DIR
+        value: /var/data
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: CLAUDE_MODEL
+        value: claude-haiku-5-5
+      - key: CLAUDE_EFFORT
+        value: medium
+      # Dominios de la interfaz, separados por comas. Ej.: https://lavirshion.vercel.app,https://*.vercel.app
+      - key: CORS_ORIGINS
+        sync: false
+      # Opcional: si el modelo no está en backend/models/, se descarga de estas URLs al arrancar.
+      - key: MODEL_URL
+        sync: false
+      - key: MODEL_META_URL
+        sync: false
+    disk:
+      name: lavirshion-data
+      mountPath: /var/data
+      sizeGB: 1

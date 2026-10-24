@@ -1,0 +1,5 @@
+# Solo preparación del dataset (etiquetado con el maestro y armado de train/val/test).
+# El entrenamiento y la exportación a ONNX corren en Colab (colab_train.ipynb): acá no hace falta torch ni ultralytics.
+requests
+pillow
+pyyaml

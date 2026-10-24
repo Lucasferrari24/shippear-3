@@ -1,7 +1,7 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
-/node_modules
+node_modules/
 /.pnp
 .pnp.*
 .yarn/*
@@ -48,3 +48,12 @@ next-env.d.ts
 !/data/**/
 !/data/README.md
 !/data/**/.gitkeep
+
+# pipeline de entrenamiento
+/ml/.venv/
+/ml/work/
+__pycache__/
+*.pt
+
+# modelo entrenado: se versionan centinela.onnx y centinela.json; los pesos de PyTorch no
+/backend/models/*.part
