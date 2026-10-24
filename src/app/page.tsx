@@ -2,12 +2,43 @@
 
 import { useEffect, useState } from "react";
 import { Trash2 } from "lucide-react";
+import { cn } from "cn";
 import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer";
 import { Detail, DetailEmpty } from "@/components/inspect/detail";
 import { LoteGrid } from "@/components/inspect/lote-grid";
 import { LoteSummary } from "@/components/inspect/summary";
 import { Upload } from "@/components/inspect/upload";
 import { useStore } from "@/lib/store";
+import type { Engine } from "@/lib/api";
+
+/** Elige quién inspecciona: el YOLO entrenado que carga el backend o Claude. */
+function EnginePicker() {
+  const { engine, setEngine, health } = useStore();
+  const options: { value: Engine; label: string; disabled: boolean }[] = [
+    { value: "local", label: "YOLO local", disabled: !health?.local.available },
+    { value: "teacher", label: "Claude", disabled: health ? !health.teacher.configured : false },
+  ];
+  return (
+    <div role="group" aria-label="Modelo que inspecciona" className="flex rounded-full bg-elevated/70 p-1">
+      {options.map((o) => (
+        <button
+          key={o.value}
+          type="button"
+          aria-pressed={engine === o.value}
+          disabled={o.disabled}
+          title={o.disabled ? (o.value === "local" ? "El backend no tiene un modelo entrenado cargado" : "Falta ANTHROPIC_API_KEY en el backend") : undefined}
+          onClick={() => setEngine(o.value)}
+          className={cn(
+            "h-8 rounded-full px-3.5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40",
+            engine === o.value ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 function useIsDesktop() {
   const [desktop, setDesktop] = useState(true);
@@ -36,6 +67,8 @@ export default function InspectPage() {
       <div className="flex flex-col gap-1">
         <div className="flex items-end justify-between gap-3">
           <h1 className="text-balance text-3xl font-semibold tracking-tight text-foreground md:text-4xl">Inspeccionar lote</h1>
+          <div className="flex items-center gap-2">
+          <EnginePicker />
           {items.length > 0 && (
             <button
               type="button"
@@ -46,6 +79,7 @@ export default function InspectPage() {
               Vaciar
             </button>
           )}
+          </div>
         </div>
         <p className="text-pretty text-sm leading-relaxed text-muted-foreground">
           Virginia Clásico y Stevia · tapa y nivel por foto, con veredicto calculado sobre la banda vigente.

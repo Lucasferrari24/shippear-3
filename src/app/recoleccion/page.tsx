@@ -37,7 +37,7 @@ export default function RecoleccionPage() {
 
         <p className="flex items-start gap-2.5 rounded-3xl bg-elevated/50 px-4 py-3 text-sm leading-relaxed text-muted-foreground">
           <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
-          Solo funciona corriendo en local: las fotos se guardan en disco y en producción no hay almacenamiento persistente.
+          Las fotos y las lecturas se guardan en el disco persistente del backend (Render). Cada muestra cuesta una llamada al maestro.
         </p>
 
         <section className="grid grid-cols-3 gap-3" aria-label="Este lote">

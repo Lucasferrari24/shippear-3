@@ -1,7 +1,7 @@
 // Dibuja las cotas de una inspección (envase, pico, tapa, menisco y banda) sobre un canvas 2D.
-// Lo usan la vista de foto (Overlay) y la cámara en tiempo real.
+// Lo usa la cámara en tiempo real (la vista de foto tiene el suyo en components/qc/overlay.tsx).
 
-import type { Box, Verdict, VisionReading } from "@/lib/inspection";
+import type { Box, Verdict, VisionReading } from "@/lib/types";
 
 const CAP_COLORS = {
   ok: "#22c55e",

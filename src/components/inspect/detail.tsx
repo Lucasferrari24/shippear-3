@@ -107,7 +107,7 @@ export function Detail({ item, className }: { item: Item; className?: string }) 
                   label={`Confianza ${Math.round(r.reading.confidence * 100)}%`}
                 />
                 <span className="text-xs text-muted-foreground">
-                  Confianza del maestro{" "}
+                  {"engine" in r && r.engine === "local" ? "Confianza del modelo local" : "Confianza del maestro"}{" "}
                   <span className="font-mono tabular-nums text-foreground">{r.reading.confidence.toFixed(2)}</span>
                 </span>
               </figcaption>

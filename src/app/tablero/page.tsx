@@ -67,12 +67,14 @@ function Segmented<T extends string | number>({
 
 export default function TableroPage() {
   const { data: lines } = useSWR("lines", getLines);
-  const [line, setLine] = useState("Línea 1");
+  const [picked, setLine] = useState<string | null>(null);
+  const line = picked ?? lines?.[0] ?? "line-1";
   const [range, setRange] = useState<(typeof RANGES)[number]>(14);
   const { data, isLoading } = useSWR(["line", line, range], () => getLineDashboard(line, range));
 
   const totals = data?.daily.reduce(
-    (a, r) => ({ total: a.total + r.total, ok: a.ok + r.ok, nok: a.nok + r.nok, ms: a.ms + r.avg_ms }),
+    // Latencia ponderada por botellas: los días sin producción no bajan el promedio.
+    (a, r) => ({ total: a.total + r.total, ok: a.ok + r.ok, nok: a.nok + r.nok, ms: a.ms + r.avg_ms * r.total }),
     { total: 0, ok: 0, nok: 0, ms: 0 },
   );
 
@@ -80,7 +82,7 @@ export default function TableroPage() {
     <>
       <PageHeader title="Tablero de línea" subtitle="Producción, defectos y combinaciones tapa por nivel." color="var(--line-fg)" icon={ChartArea}>
         <div className="flex flex-wrap gap-2">
-          <Segmented options={lines ?? ["Línea 1"]} value={line} onChange={setLine} label="Línea" />
+          <Segmented options={lines ?? [line]} value={line} onChange={setLine} label="Línea" />
           <Segmented options={RANGES} value={range} onChange={setRange} label="Rango" format={(d) => `${d} d`} />
         </div>
       </PageHeader>
@@ -95,9 +97,9 @@ export default function TableroPage() {
           <section className="grid grid-cols-2 gap-3 md:grid-cols-4" aria-label="Indicadores">
             {[
               { label: "Botellas", value: totals.total.toLocaleString("es-AR"), color: "var(--foreground)" },
-              { label: "Rendimiento", value: `${((totals.ok / totals.total) * 100).toFixed(1)}%`, color: "var(--ok)" },
+              { label: "Rendimiento", value: totals.total ? `${((totals.ok / totals.total) * 100).toFixed(1)}%` : "—", color: "var(--ok)" },
               { label: "Rechazos", value: totals.nok.toLocaleString("es-AR"), color: "var(--nok)" },
-              { label: "Latencia media", value: `${(totals.ms / data.daily.length / 1000).toFixed(1)} s`, color: "var(--line-fg)" },
+              { label: "Latencia media", value: totals.total ? `${(totals.ms / totals.total / 1000).toFixed(1)} s` : "—", color: "var(--line-fg)" },
             ].map((k) => (
               <div key={k.label} className="flex flex-col gap-1 rounded-3xl border border-border bg-card p-4">
                 <span className="text-xs text-muted-foreground">{k.label}</span>

@@ -1,9 +1,10 @@
 // Acceso a la base SQLite de inspecciones (quality_control.db) con el SQLite que trae Node (node:sqlite).
 // Al abrirla aplica las migraciones de db/migrations/ que falten.
-// Solo para el servidor: en Vercel el disco no persiste, así que la recolección es para correr local.
+// En Render, DATA_DIR apunta al disco persistente (render.yaml); en local, a data/ en la raíz del repo.
 
 import fs from "node:fs";
 import path from "node:path";
+import { DatabaseSync } from "node:sqlite";
 
 type Row = Record<string, unknown>;
 type Statement = {
@@ -15,20 +16,20 @@ export type Db = {
   exec(sql: string): void;
   prepare(sql: string): Statement;
 };
-type SqliteModule = { DatabaseSync: new (file: string) => Db };
 
-export const DATA_DIR = path.resolve(process.cwd(), process.env.DATA_DIR ?? "data");
-const DB_PATH = path.resolve(process.cwd(), process.env.DB_PATH ?? "data/quality_control.db");
-const MIGRATIONS_DIR = path.resolve(process.cwd(), "db/migrations");
+/** Carpeta backend/ (las rutas por defecto no dependen del directorio desde el que se arranca). */
+export const BACKEND_DIR = path.resolve(import.meta.dirname, "../..");
+
+export const DATA_DIR = path.resolve(BACKEND_DIR, process.env.DATA_DIR ?? "../data");
+const DB_PATH = path.resolve(DATA_DIR, process.env.DB_PATH ?? "quality_control.db");
+const MIGRATIONS_DIR = path.join(BACKEND_DIR, "db/migrations");
 
 let db: Db | null = null;
 
 export function getDb(): Db {
   if (db) return db;
-  // getBuiltinModule evita que el bundler de Next intente resolver node:sqlite.
-  const { DatabaseSync } = process.getBuiltinModule("node:sqlite") as SqliteModule;
   fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
-  const conn = new DatabaseSync(DB_PATH);
+  const conn = new DatabaseSync(DB_PATH) as unknown as Db;
   conn.exec("PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000;");
   migrate(conn);
   db = conn;

@@ -2,8 +2,8 @@
 // La clase de cada foto sale de su carpeta (data/<origen>/<modelo>/<clase>/), como en ml/.
 //
 // Uso:
-//   npx tsx --env-file=.env.local scripts/compare-teachers.ts                 # 3 fotos por clase, tope US$0.50
-//   npx tsx --env-file=.env.local scripts/compare-teachers.ts --per-class 2 --max-usd 0.3 \
+//   npm run compare-teachers                                  # 3 fotos por clase, tope US$0.50
+//   npm run compare-teachers -- --per-class 2 --max-usd 0.3 \
 //       --models claude-haiku-5-5:medium,claude-haiku-5-5:high,claude-sonnet-5-5:low
 //
 // Se detiene antes de que el gasto estimado pase --max-usd. Resultados en data/teacher_comparison.json.
@@ -11,6 +11,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import sharp from "sharp";
+import { DATA_DIR } from "@/lib/db";
 import { judge, DEFAULT_BANDS } from "@/lib/inspection";
 import { askTeacher, PRICES, type Effort } from "@/lib/teacher";
 
@@ -44,7 +45,7 @@ function pickPhotos(): Photo[] {
   for (const source of SOURCES) {
     for (const bottleModel of ["clasico", "stevia"]) {
       for (const cls of Object.keys(CLASS_EXPECTED)) {
-        const dir = path.join("data", source, bottleModel, cls);
+        const dir = path.join(DATA_DIR, source, bottleModel, cls);
         if (!fs.existsSync(dir)) continue;
         for (const f of fs.readdirSync(dir)) {
           if (!/\.(jpe?g|png|webp)$/i.test(f)) continue;
@@ -130,7 +131,7 @@ async function main() {
     );
   }
   console.log(`\nGasto total estimado: US$${spent.toFixed(4)}`);
-  fs.writeFileSync(path.join("data", "teacher_comparison.json"), JSON.stringify({ summary, results }, null, 1));
+  fs.writeFileSync(path.join(DATA_DIR, "teacher_comparison.json"), JSON.stringify({ summary, results }, null, 1));
   console.log("Detalle: data/teacher_comparison.json");
 }
 

@@ -13,7 +13,7 @@ data/
 ├── generated/     # Variaciones de Gemini, siempre a partir de una foto de real/
 ├── feedback/      # Fotos verificadas por el maestro en la app; las crea ml/export_feedback.py
 ├── captures/      # Fotos que guarda la app en modo recolección (las referencia la base)
-└── quality_control.db   # Base SQLite de la app (ver db/README.md)
+└── quality_control.db   # Base SQLite de la app (ver backend/db/README.md); en Render vive en el disco persistente
 ```
 
 Dentro de cada carpeta, una subcarpeta por modelo de botella y otra por clase:
@@ -37,7 +37,7 @@ generated/stevia/abierta/IMG_0031__abierta_02.jpg
 | Nivel bajo | `nivel_bajo/` | 04 |
 | Nivel alto | `nivel_alto/` | 04 |
 
-Los nombres de clase coinciden con `CapState` y `DefectCode` en [`src/lib/inspection.ts`](../src/lib/inspection.ts).
+Los nombres de clase coinciden con `CapState` y `DefectCode` en [`backend/src/lib/types.ts`](../backend/src/lib/types.ts).
 
 ## Reglas
 

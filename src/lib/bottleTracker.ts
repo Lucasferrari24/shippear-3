@@ -5,9 +5,8 @@
 //   - cuando deja de verse durante `gapFrames` cuadros, la cierra con el código más votado;
 //   - si se vio menos de `minFrames` cuadros, la descarta como ruido.
 
-import type { BottleState } from "@/lib/bottle";
-import type { Detection } from "@/lib/feedback";
-import type { InspectionResult } from "@/lib/inspection";
+import type { Detection } from "@/lib/api";
+import type { BottleState, InspectionResult } from "@/lib/types";
 
 /** Un cuadro analizado: la imagen enviada y lo que devolvió el modelo. */
 export type Frame = {

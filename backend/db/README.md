@@ -2,7 +2,7 @@
 
 La app guarda inspecciones, la verificación del modelo maestro y la cola del dataset en `data/quality_control.db`, que se puede cambiar con `DB_PATH`. Usa el SQLite que trae Node (`node:sqlite`, Node 22.5 o superior), así que no hay dependencias nativas.
 
-Al abrir la base, [`src/lib/db.ts`](../src/lib/db.ts) aplica en orden las migraciones de `migrations/` que falten y las registra en `schema_migrations`. Si la base no existe, la crea desde cero.
+Al abrir la base, [`src/lib/db.ts`](../src/lib/db.ts) (en `backend/`) aplica en orden las migraciones de `migrations/` que falten y las registra en `schema_migrations`. Si la base no existe, la crea desde cero.
 
 | Migración | Contenido |
 |---|---|
@@ -47,7 +47,7 @@ Al abrir la base, [`src/lib/db.ts`](../src/lib/db.ts) aplica en orden las migrac
 
 ## Estado y categoría de cada botella (migración 003)
 
-Cada botella procesada es un objeto `Bottle` ([`src/lib/bottle.ts`](../src/lib/bottle.ts)) con dos variables de estado. La categoría sale de combinarlas.
+Cada botella procesada tiene dos variables de estado ([`judge.ts`](../src/lib/judge.ts), mismo archivo en la interfaz). La categoría sale de combinarlas.
 
 | Variable | Valores |
 |---|---|

@@ -82,7 +82,10 @@ export type Sample = {
 export type Item = {
   key: string;
   name: string;
+  /** URL para mostrar la foto (blob local o la del backend). */
   src: string;
+  /** La foto reescalada como data URL jpeg: es lo que se manda a la API y en lo que vienen las coordenadas. */
+  data?: string;
   width: number;
   height: number;
   status: "pending" | "running" | "done" | "error";

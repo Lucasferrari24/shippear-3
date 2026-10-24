@@ -81,7 +81,7 @@ export function LoteGrid({ onOpen }: { onOpen: (key: string) => void }) {
       <div className="flex flex-col items-center gap-2 rounded-3xl border border-border bg-card px-6 py-16 text-center">
         <p className="text-lg font-semibold text-foreground">El lote está vacío</p>
         <p className="max-w-sm text-pretty text-sm leading-relaxed text-muted-foreground">
-          Sacá una foto o subí varias para que el maestro las inspeccione.
+          Sacá una foto o subí varias para inspeccionarlas.
         </p>
       </div>
     );

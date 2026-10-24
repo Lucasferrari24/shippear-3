@@ -1,0 +1,32 @@
+{
+  "name": "centinela-qc-backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "dev": "tsx watch --env-file-if-exists=.env src/server.ts",
+    "start": "tsx src/server.ts",
+    "typecheck": "tsc --noEmit",
+    "compare-teachers": "tsx --env-file-if-exists=.env scripts/compare-teachers.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.3.0",
+    "@hono/node-server": "^2.1.5",
+    "hono": "^4.13.13",
+    "onnxruntime-node": "^1.30.0",
+    "sharp": "^0.34.5",
+    "tsx": "^4.23.15"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "typescript": "^7.0.2"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true,
+    "onnxruntime-node@1.30.0": true,
+    "sharp@0.34.5": true
+  }
+}

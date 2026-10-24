@@ -12,9 +12,9 @@ import {
   type DefectCode,
   type LevelBand,
   type Verdict,
+  type BottleState,
   type VisionReading,
 } from "@/lib/inspection";
-import type { BottleState } from "@/lib/bottle";
 import type { TeacherResult } from "@/lib/teacher";
 
 /** Clases del detector, en el mismo orden que ml/config.yaml. */
@@ -189,7 +189,7 @@ function upsertModelVersion(conn: Db, mv: LocalPrediction["modelVersion"]): stri
   const id = crypto.randomUUID();
   conn
     .prepare(
-      "INSERT INTO model_versions (id, name, format, relative_path, sha256, classes_json, is_active) VALUES (?, ?, 'onnx', 'public/models/centinela.onnx', ?, ?, 1)",
+      "INSERT INTO model_versions (id, name, format, relative_path, sha256, classes_json, is_active) VALUES (?, ?, 'onnx', 'models/centinela.onnx', ?, ?, 1)",
     )
     .run(id, mv.name, mv.sha256 ?? null, JSON.stringify(DETECTOR_CLASSES));
   return id;

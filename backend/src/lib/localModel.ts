@@ -1,4 +1,6 @@
-// Modelo local: el detector YOLO entrenado en ml/ y exportado a ONNX (public/models/centinela.onnx).
+// Modelo local: el detector YOLO ya entrenado (en Colab, ver ml/colab_train.ipynb) y exportado a ONNX.
+// El backend no entrena: carga backend/models/centinela.onnx + centinela.json, o los descarga de
+// MODEL_URL y MODEL_META_URL al arrancar si no están en disco.
 // Corre en el servidor con onnxruntime-node y devuelve una VisionReading, igual que el maestro,
 // para que las mismas reglas (judge) y estados de botella decidan el veredicto.
 //
@@ -9,10 +11,11 @@ import fs from "node:fs";
 import path from "node:path";
 import * as ort from "onnxruntime-node";
 import sharp from "sharp";
+import { BACKEND_DIR } from "@/lib/db";
 import type { Detection } from "@/lib/feedback";
 import type { BottleModel, Box, CapState, LevelBand, VisionReading } from "@/lib/inspection";
 
-const MODEL_DIR = path.resolve(process.cwd(), process.env.LOCAL_MODEL_DIR ?? "public/models");
+const MODEL_DIR = path.resolve(BACKEND_DIR, process.env.LOCAL_MODEL_DIR ?? "models");
 const ONNX_PATH = path.join(MODEL_DIR, "centinela.onnx");
 const META_PATH = path.join(MODEL_DIR, "centinela.json");
 
@@ -38,7 +41,7 @@ export class ModelUnavailableError extends Error {}
 async function getModel(): Promise<Loaded> {
   if (!fs.existsSync(ONNX_PATH) || !fs.existsSync(META_PATH)) {
     throw new ModelUnavailableError(
-      "No hay modelo entrenado: falta public/models/centinela.onnx (correr ml/pipeline.py).",
+      "No hay modelo entrenado: falta backend/models/centinela.onnx (o MODEL_URL en el servidor).",
     );
   }
   const mtimeMs = fs.statSync(ONNX_PATH).mtimeMs;
@@ -221,4 +224,41 @@ export async function predictLocal(image: string): Promise<LocalResult> {
 /** true si hay un modelo exportado listo para usar. */
 export function hasLocalModel(): boolean {
   return fs.existsSync(ONNX_PATH) && fs.existsSync(META_PATH);
+}
+
+/**
+ * Descarga el modelo entrenado si no está en disco y hay MODEL_URL (y MODEL_META_URL) configuradas.
+ * Se llama una vez al arrancar el servidor; si falla, la API sigue andando solo con el maestro.
+ */
+export async function ensureLocalModel(): Promise<void> {
+  const onnxUrl = process.env.MODEL_URL;
+  const metaUrl = process.env.MODEL_META_URL;
+  if (hasLocalModel() && !process.env.MODEL_FORCE_DOWNLOAD) return;
+  if (!onnxUrl || !metaUrl) return;
+  fs.mkdirSync(MODEL_DIR, { recursive: true });
+  for (const [url, dst] of [[metaUrl, META_PATH], [onnxUrl, ONNX_PATH]] as const) {
+    const res = await fetch(url, { redirect: "follow" });
+    if (!res.ok) throw new Error(`No se pudo descargar ${url}: HTTP ${res.status}`);
+    // Se escribe a un temporal y se renombra, para no dejar un ONNX a medias si se corta.
+    const tmp = `${dst}.part`;
+    fs.writeFileSync(tmp, Buffer.from(await res.arrayBuffer()));
+    fs.renameSync(tmp, dst);
+  }
+}
+
+/** Datos del modelo cargado, para /health y la pantalla de salud del modelo. */
+export async function localModelInfo(): Promise<{
+  available: boolean;
+  version: string | null;
+  sha: string | null;
+  bands?: ModelMeta["bands"];
+  error?: string;
+}> {
+  if (!hasLocalModel()) return { available: false, version: null, sha: null };
+  try {
+    const { version, meta } = await getModel();
+    return { available: true, version, sha: version.replace(/^centinela-/, ""), bands: meta.bands };
+  } catch (e) {
+    return { available: false, version: null, sha: null, error: (e as Error).message };
+  }
 }

@@ -31,12 +31,14 @@ export default function ModeloPage() {
             <div className="flex items-center justify-between gap-3">
               <h2 className="font-semibold text-foreground">{data.local.name}</h2>
               <span className="inline-flex h-7 items-center gap-1.5 rounded-full bg-elevated px-2.5 text-xs text-muted-foreground">
-                <span className="size-1.5 rounded-full bg-process" aria-hidden />
+                <span className={`size-1.5 rounded-full ${data.local.integrated ? "bg-ok" : "bg-process"}`} aria-hidden />
                 {data.local.integrated ? "Integrado" : "No integrado"}
               </span>
             </div>
             <p className="text-sm leading-relaxed text-muted-foreground">
-              Hoy todas las inspecciones las resuelve el maestro. Cuando el modelo local esté integrado, sus lecturas se comparan contra el maestro y los desacuerdos van primero a la cola de revisión.
+              {data.local.integrated
+                ? `El backend tiene cargado el modelo entrenado ${data.local.version}. En el modo recolección, sus lecturas se comparan contra el maestro y los desacuerdos van primero a la cola de revisión.`
+                : "El backend no tiene un modelo entrenado cargado: las inspecciones las resuelve el maestro. Para integrarlo, copiar centinela.onnx y centinela.json (salen de ml/colab_train.ipynb) en backend/models/."}
             </p>
           </section>
 
