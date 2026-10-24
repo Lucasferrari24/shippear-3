@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Overlay } from "@/components/Overlay";
+import type { FeedbackResult } from "@/lib/feedback";
 import {
   DEFAULT_BANDS,
   DEFECT_LABELS,
@@ -18,7 +19,19 @@ type Item = {
   height: number;
   status: "pending" | "running" | "done" | "error";
   result?: InspectionResult;
+  feedback?: Pick<FeedbackResult, "comparison" | "sample">;
   error?: string;
+};
+
+type Summary = { samples: { status: string; n: number }[]; outcomes: { outcome: string; n: number }[] };
+
+const COLLECT_KEY = "centinela.collect";
+
+const SAMPLE_STATUS: Record<string, string> = {
+  approved: "aprobada",
+  pending: "pendiente de revisión",
+  rejected: "rechazada",
+  exported: "exportada",
 };
 
 type Bands = typeof DEFAULT_BANDS;
@@ -55,18 +68,74 @@ export default function Home() {
   const [bands, setBands] = useState<Bands>(DEFAULT_BANDS);
   const [selected, setSelected] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [collect, setCollect] = useState(false);
+  const [summary, setSummary] = useState<Summary | null>(null);
+  const collectRef = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(COLLECT_KEY) === "1";
+      collectRef.current = saved;
+      setCollect(saved);
+    } catch {}
+  }, []);
+
+  const refreshSummary = useCallback(async () => {
+    try {
+      const res = await fetch("/api/feedback");
+      if (res.ok) setSummary(await res.json());
+    } catch {}
+  }, []);
+
+  const toggleCollect = (on: boolean) => {
+    collectRef.current = on;
+    setCollect(on);
+    try {
+      localStorage.setItem(COLLECT_KEY, on ? "1" : "0");
+    } catch {}
+    if (on) refreshSummary();
+  };
 
   const patch = (key: string, p: Partial<Item>) =>
     setItems((xs) => xs.map((x) => (x.key === key ? { ...x, ...p } : x)));
 
   const inspect = useCallback(async (item: Item) => {
     patch(item.key, { status: "running" });
+    const body = { image: item.src, width: item.width, height: item.height };
     try {
+      if (collectRef.current) {
+        // Recolección: el maestro verifica la foto y la muestra queda guardada para el dataset.
+        // Cuando el modelo local corra en el navegador, su predicción viaja en `local` para compararla.
+        const res = await fetch("/api/feedback", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
+        const fb = data as FeedbackResult;
+        patch(item.key, {
+          status: "done",
+          result: {
+            id: fb.inspectionId,
+            createdAt: new Date().toISOString(),
+            width: item.width,
+            height: item.height,
+            reading: fb.teacher.reading,
+            verdict: fb.teacher.verdict,
+            model: fb.teacher.model,
+            latencyMs: fb.teacher.latencyMs,
+          },
+          feedback: { comparison: fb.comparison, sample: fb.sample },
+        });
+        refreshSummary();
+        return;
+      }
       const res = await fetch("/api/inspect", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ image: item.src, width: item.width, height: item.height }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
@@ -74,7 +143,7 @@ export default function Home() {
     } catch (e) {
       patch(item.key, { status: "error", error: e instanceof Error ? e.message : String(e) });
     }
-  }, []);
+  }, [refreshSummary]);
 
   const addFiles = useCallback(
     async (files: FileList | File[]) => {
@@ -156,6 +225,32 @@ export default function Home() {
           <Stat label="NOK" value={nok.length} tone="nok" />
         </div>
       </header>
+
+      <div className="mb-4 rounded-xl border border-slate-800 px-4 py-3 text-sm">
+        <label className="flex cursor-pointer items-center gap-3">
+          <input
+            type="checkbox"
+            checked={collect}
+            onChange={(e) => toggleCollect(e.target.checked)}
+            className="h-4 w-4 accent-sky-500"
+          />
+          <span className="font-medium">Recolectar datos para el dataset</span>
+        </label>
+        <p className="mt-1 text-xs text-slate-500">
+          Cada foto se envía al modelo maestro (Claude, API externa), se compara con el modelo local y se guarda en
+          la base para reentrenar. Activalo solo con fotos que la empresa autorizó a compartir.
+        </p>
+        {collect && summary && (
+          <p className="mt-2 text-xs text-slate-300">
+            Dataset:{" "}
+            {summary.samples.length
+              ? summary.samples.map((s) => `${s.n} ${SAMPLE_STATUS[s.status] ?? s.status}`).join(" · ")
+              : "sin muestras todavía"}
+            {summary.outcomes.length > 0 &&
+              " · comparaciones: " + summary.outcomes.map((o) => `${o.n} ${o.outcome}`).join(", ")}
+          </p>
+        )}
+      </div>
 
       <div
         onDragOver={(e) => {
@@ -354,6 +449,18 @@ function Detail({
         <dd>{(result.latencyMs / 1000).toFixed(1)} s</dd>
       </dl>
       <p className="mt-3 border-t border-slate-800 pt-3 italic text-slate-400">“{r.evidence}”</p>
+      {item.feedback && (
+        <p className="mt-3 rounded-lg bg-slate-900 px-3 py-2 text-xs text-slate-300">
+          {item.feedback.comparison.outcome === "teacher_only"
+            ? "Verificada por el maestro."
+            : item.feedback.comparison.outcome === "agree"
+              ? "El modelo local coincide con el maestro."
+              : "El modelo local NO coincide con el maestro."}{" "}
+          Muestra del dataset: <b>{item.feedback.sample.labelClass ?? "sin clase"}</b>,{" "}
+          {SAMPLE_STATUS[item.feedback.sample.status] ?? item.feedback.sample.status}
+          {item.feedback.sample.reason ? ` (${item.feedback.sample.reason})` : ""}.
+        </p>
+      )}
       <button
         onClick={onCalibrate}
         disabled={verdict.levelFraction == null}

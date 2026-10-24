@@ -48,3 +48,9 @@ next-env.d.ts
 !/data/**/
 !/data/README.md
 !/data/**/.gitkeep
+
+# pipeline de entrenamiento
+/ml/.venv/
+/ml/work/
+__pycache__/
+*.pt

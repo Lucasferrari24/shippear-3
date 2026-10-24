@@ -1,0 +1,8 @@
+# PyTorch para CPU: instalar primero con
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+ultralytics>=8.4
+onnx
+onnxslim
+onnxruntime
+requests
+pyyaml

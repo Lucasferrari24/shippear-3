@@ -23,7 +23,7 @@ Al final de la línea, cada botella (modelos **Clásico**, de tapa roja, y **Ste
 
 Separamos **percepción** de **decisión**:
 
-1. **La IA mide.** Un modelo de visión (Claude) recibe la foto y devuelve una medición estructurada: el modelo de botella, cajas de envase, pico y tapa en píxeles, el estado de la tapa, la separación tapa-pico, la altura del menisco y la evidencia en texto. La salida se fuerza con *tool use*, así que siempre llega un JSON válido.
+1. **La IA mide.** Un modelo de visión (Claude) recibe la foto y devuelve una medición estructurada: el modelo de botella, cajas de envase, pico y tapa en píxeles, el estado de la tapa, la separación tapa-pico, la altura del menisco y la evidencia en texto. La salida usa *structured outputs*, así que siempre llega un JSON que cumple el esquema.
 2. **Las reglas deciden.** Un motor determinístico ([`src/lib/inspection.ts`](src/lib/inspection.ts)) convierte el nivel en una fracción de la altura del envase y lo compara contra la banda de cada modelo. El veredicto es auditable y reproducible.
 3. **Calibración en un click.** Marcás una botella buena como referencia y la banda queda fijada en ±4%. Los veredictos de todo el lote se recalculan en el cliente sin volver a llamar a la IA.
 4. **Trazabilidad.** Cada foto queda con sus cotas superpuestas y la evidencia. Podés procesar lotes de muchas fotos en paralelo y exportar todo a CSV.
@@ -40,17 +40,20 @@ No usamos datasets públicos: ninguno tiene tapas a presión con capuchón ni ni
 
 La estructura y las reglas están en [`data/README.md`](data/README.md). Las imágenes no se suben al repo.
 
-**En construcción:**
+**Modelo local y maestro:**
 
-1. **Modelo local.** Un detector liviano exportado a ONNX que corre en el navegador, sin red. Claude queda como modelo maestro.
-2. **Modo de recolección.** Es opcional y viene desactivado. Guarda cada foto con la predicción local y la del maestro, y manda los desacuerdos a revisión humana. Esas fotos revisadas alimentan el reentrenamiento.
+1. **Modelo local:** un detector YOLO nano entrenado con [`ml/`](ml/README.md) y exportado a ONNX en `public/models/`. Falta integrarlo para que corra en el navegador.
+2. **Modelo maestro:** Claude Opus 5.5, en [`src/lib/teacher.ts`](src/lib/teacher.ts), con salida estructurada.
+3. **Modo de recolección:** un interruptor en la interfaz, desactivado por defecto. Cada foto se verifica con el maestro y se compara con el modelo local. Todo se guarda en SQLite: [`db/README.md`](db/README.md) tiene el esquema y la cola del dataset. Las muestras aprobadas vuelven al entrenamiento con `ml/export_feedback.py`.
 
 ## Stack
 
 - Next.js 15 (App Router) + React 19 + Tailwind 4
-- Anthropic SDK: Claude con visión y *tool use* forzado, en [`src/app/api/inspect/route.ts`](src/app/api/inspect/route.ts)
+- Anthropic SDK: Claude Opus 5.5 con visión y salida estructurada, en [`src/lib/teacher.ts`](src/lib/teacher.ts)
+- SQLite con `node:sqlite` (Node 22.5 o superior), en [`src/lib/db.ts`](src/lib/db.ts) y [`db/`](db/README.md)
+- YOLO (Ultralytics) para el modelo local, en [`ml/`](ml/README.md)
 - Overlay en Canvas, en [`src/components/Overlay.tsx`](src/components/Overlay.tsx)
-- Deploy en Vercel
+- Deploy en Vercel (la recolección de datos necesita correr en local: el disco de Vercel no persiste)
 
 ## Correr localmente
 

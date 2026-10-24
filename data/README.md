@@ -10,7 +10,10 @@ Imágenes propias: fotos reales de producción más variaciones generadas con Ge
 data/
 ├── real/          # Fotos reales de producción para entrenar
 ├── real_test/     # Fotos reales reservadas para evaluar. Nunca se usan para entrenar ni para generar variaciones
-└── generated/     # Variaciones de Gemini, siempre a partir de una foto de real/
+├── generated/     # Variaciones de Gemini, siempre a partir de una foto de real/
+├── feedback/      # Fotos verificadas por el maestro en la app; las crea ml/export_feedback.py
+├── captures/      # Fotos que guarda la app en modo recolección (las referencia la base)
+└── quality_control.db   # Base SQLite de la app (ver db/README.md)
 ```
 
 Dentro de cada carpeta, una subcarpeta por modelo de botella y otra por clase:
@@ -43,4 +46,6 @@ Los nombres de clase coinciden con `CapState` y `DefectCode` en [`src/lib/inspec
 3. **Repartir parejo:** cerca de 8 imágenes por cada combinación de modelo de botella y clase (2 × 6 ≈ 100).
 4. **Mismo encuadre que en producción:** misma cámara, distancia, fondo y luz. Las variaciones de Gemini solo cambian el defecto, más leves cambios de luz.
 5. **Revisión a mano:** descartar las imágenes generadas que no sean físicamente creíbles, como una tapa deformada o un menisco imposible.
-6. **El nivel no lo aprende el detector.** Lo resuelve la regla de banda calibrada en la app. Las clases `nivel_bajo` y `nivel_alto` sirven para evaluar esa regla.
+6. **El detector ubica el menisco, pero no decide el nivel.** La decisión la toma la regla de banda, calibrada con las fotos `ok`. Las clases `nivel_bajo` y `nivel_alto` sirven para evaluar esa regla.
+
+Para entrenar con estas imágenes, ver [`ml/README.md`](../ml/README.md).

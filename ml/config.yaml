@@ -1,0 +1,57 @@
+# Configuración del pipeline de entrenamiento de Centinela QC.
+# Las rutas relativas se resuelven desde la carpeta ml/.
+
+data_dir: ../data          # real/, real_test/ y generated/ (ver data/README.md)
+work_dir: work             # etiquetas, dataset armado, corridas y reportes (no se versiona)
+export_dir: ../public/models
+
+# Clases del detector. El orden define el id de clase en YOLO y en el ONNX exportado.
+classes:
+  - botella
+  - tapa_ok
+  - tapa_mal_colocada
+  - tapa_abierta
+  - pico_sin_tapa
+  - menisco
+
+# Etiquetado automático con el modelo maestro (la ruta /api/inspect de la app).
+autolabel:
+  inspect_url: http://localhost:3000/api/inspect
+  max_side: 1600           # se achica la imagen antes de mandarla a la API
+  workers: 4
+  menisco_half_height: 0.012   # media altura de la caja del menisco, como fracción del alto de la botella
+
+# Armado del dataset.
+split:
+  val_fraction: 0.2        # por foto de origen: una foto real y sus variaciones van juntas
+  seed: 42
+
+# Banda de llenado (fracción de la altura de la botella desde arriba, menor = más lleno).
+# Se recalibra sola con las fotos "ok" etiquetadas; estos valores son el respaldo.
+band:
+  default: { min: 0.22, max: 0.34 }
+  margin: 0.04             # igual que la calibración de la app: mediana de las "ok" ± margen
+
+train:
+  model: yolo26n.pt        # nano, NMS-free; alternativa: yolo11n.pt
+  # Medido en la Ryzen 5 7530U: ~0,5 s por imagen y época a 640 px. Con ~80 fotos de train, 60 épocas ≈ 35-45 min.
+  epochs: 60
+  patience: 20
+  imgsz: 640
+  batch: 8
+  workers: 2
+  device: cpu
+  # Aumentaciones pensadas para una botella de frente: sin flip vertical, giro leve.
+  fliplr: 0.5
+  flipud: 0.0
+  degrees: 5.0
+  translate: 0.08
+  scale: 0.3
+  hsv_h: 0.01             # bajo para no confundir la tapa roja (Clásico) con la verde (Stevia)
+  hsv_s: 0.5
+  hsv_v: 0.4
+  mosaic: 0.5
+  close_mosaic: 15
+
+predict:
+  conf: 0.25
