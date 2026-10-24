@@ -30,11 +30,10 @@ export const MOCK_BANDS: Bands = {
   stevia: { min: 0.42, max: 0.5 },
 };
 
-type Base = { src: string; reading: VisionReading };
+type Base = { reading: VisionReading };
 
 const BASES = {
   clasicoOk: {
-    src: "/mock/clasico-ok.png",
     reading: {
       bottle_model: "clasico",
       bottle_box: { x0: 318, y0: 220, x1: 578, y1: 1035 },
@@ -48,7 +47,6 @@ const BASES = {
     },
   },
   steviaOk: {
-    src: "/mock/stevia-ok.png",
     reading: {
       bottle_model: "stevia",
       bottle_box: { x0: 330, y0: 260, x1: 566, y1: 1010 },
@@ -62,7 +60,6 @@ const BASES = {
     },
   },
   clasicoAbierta: {
-    src: "/mock/clasico-abierta.png",
     reading: {
       bottle_model: "clasico",
       bottle_box: { x0: 318, y0: 115, x1: 668, y1: 1080 },
@@ -76,7 +73,6 @@ const BASES = {
     },
   },
   steviaSinTapa: {
-    src: "/mock/stevia-sin-tapa.png",
     reading: {
       bottle_model: "stevia",
       bottle_box: { x0: 322, y0: 280, x1: 572, y1: 1048 },
@@ -90,7 +86,6 @@ const BASES = {
     },
   },
   steviaMal: {
-    src: "/mock/stevia-mal-colocada.png",
     reading: {
       bottle_model: "stevia",
       bottle_box: { x0: 296, y0: 175, x1: 572, y1: 1062 },
@@ -104,7 +99,6 @@ const BASES = {
     },
   },
   clasicoBajo: {
-    src: "/mock/clasico-bajo.png",
     reading: {
       bottle_model: "clasico",
       bottle_box: { x0: 312, y0: 210, x1: 584, y1: 1050 },
@@ -118,7 +112,6 @@ const BASES = {
     },
   },
   clasicoAlto: {
-    src: "/mock/clasico-alto.png",
     reading: {
       bottle_model: "clasico",
       bottle_box: { x0: 312, y0: 205, x1: 588, y1: 1050 },
@@ -132,7 +125,6 @@ const BASES = {
     },
   },
   steviaAbierta: {
-    src: "/mock/stevia-abierta.png",
     reading: {
       bottle_model: "stevia",
       bottle_box: { x0: 322, y0: 195, x1: 576, y1: 1055 },
@@ -263,16 +255,6 @@ export function classFor(cap: CapState, level: LevelStatus): DatasetClass | null
   return null;
 }
 
-export function mockItems(bands: Bands = MOCK_BANDS): Item[] {
-  return VARIANTS.map((v, i) => {
-    const base = { key: `mock-${i}`, name: v.name, src: BASES[v.base].src, width: W, height: H };
-    if (v.status === "pending") return { ...base, status: "pending" };
-    if (v.status === "error") return { ...base, status: "error", error: v.error };
-    const result = buildResult(readingFor(v), bands, i);
-    return { ...base, status: "done", result, feedback: mockFeedback(result, i) };
-  });
-}
-
 /** Lecturas que el maestro "devolvería" para cada foto conocida del lote demo. */
 export function mockReadingByName(name: string): VisionReading | null {
   const v = VARIANTS.find((x) => x.name === name);
@@ -323,46 +305,13 @@ export function syntheticReading(name: string, width: number, height: number): V
 }
 
 // --- Dataset ---
-const REVIEW_SEEDS: { base: BaseKey; priority: 1 | 2 | 3; reason: string; patch?: Partial<VisionReading> }[] = [
-  { base: "steviaMal", priority: 1, reason: "el modelo local no coincide con el maestro" },
-  { base: "clasicoAbierta", priority: 1, reason: "el modelo local no coincide con el maestro" },
-  { base: "clasicoAlto", priority: 1, reason: "el modelo local no coincide con el maestro" },
-  { base: "steviaOk", priority: 2, reason: "el maestro no pudo medir la botella o el nivel", patch: { liquid_surface_y: null } },
-  { base: "clasicoOk", priority: 2, reason: "confianza del maestro 0.62", patch: { confidence: 0.62 } },
-  { base: "steviaAbierta", priority: 2, reason: "confianza del maestro 0.66", patch: { confidence: 0.66 } },
-  { base: "clasicoBajo", priority: 3, reason: "confianza del maestro 0.68", patch: { confidence: 0.68 } },
-  { base: "steviaSinTapa", priority: 2, reason: "el maestro no pudo medir la botella o el nivel", patch: { liquid_surface_y: null } },
-  { base: "clasicoOk", priority: 3, reason: "confianza del maestro 0.69", patch: { confidence: 0.69, liquid_surface_y: 560 } },
-  { base: "steviaMal", priority: 3, reason: "confianza del maestro 0.61", patch: { confidence: 0.61 } },
-  { base: "steviaOk", priority: 3, reason: "confianza del maestro 0.67", patch: { confidence: 0.67 } },
-  { base: "clasicoAlto", priority: 2, reason: "el maestro no pudo medir la botella o el nivel", patch: { confidence: 0.14 } },
-];
-
 export function mockReviewQueue(): ReviewSample[] {
-  return REVIEW_SEEDS.map((s, i) => {
-    const reading = { ...BASES[s.base].reading, ...s.patch };
-    const v = judge(reading, MOCK_BANDS[bandKey(reading.bottle_model)]);
-    return {
-      id: `smp_${(7200 + i).toString(36)}`,
-      status: "pending",
-      labelClass: classFor(reading.cap_state, v.bottle.level),
-      reason: s.reason,
-      priority: s.priority,
-      createdAt: new Date(T0 - (i + 1) * 47 * 60_000).toISOString(),
-      src: BASES[s.base].src,
-      width: W,
-      height: H,
-      reading,
-      proposedClass: v.bottle.detected ? classFor(reading.cap_state, v.bottle.level) : null,
-      humanLabel: false,
-      reviewer: null,
-    };
-  });
+  return [];
 }
 
 export function mockDatasetSummary(): DatasetSummary {
   return {
-    counts: { pending: 12, approved: 34, rejected: 5, exported: 22 },
+    counts: { pending: 0, approved: 34, rejected: 5, exported: 22 },
     coverage: {
       clasico: { ok: 9, mal_colocada: 5, abierta: 7, sin_tapa: 3, nivel_bajo: 6, nivel_alto: 2 },
       stevia: { ok: 8, mal_colocada: 4, abierta: 2, sin_tapa: 1, nivel_bajo: 5, nivel_alto: 4 },
